@@ -25,7 +25,7 @@ namespace DXF
         }
         protected override void OnStartup(StartupEventArgs e)
         {
-            _navigationStore.CurrentViewModel = new DXFViewModel(_navigationStore, 0.1);
+            _navigationStore.CurrentViewModel = new DXFViewModel(_navigationStore, 5);
             MainWindow = new MainWindow()
             {
                 DataContext = new MainViewModel(_navigationStore)

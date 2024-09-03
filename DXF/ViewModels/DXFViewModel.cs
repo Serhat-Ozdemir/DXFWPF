@@ -7,6 +7,8 @@ using System.Windows.Media;
 using System.Windows.Media.Media3D;
 using netDxf;
 using System.Windows.Documents;
+using ClipperLib;
+using System.Windows.Shapes;
 
 namespace DXF.ViewModels
 {
@@ -284,5 +286,8 @@ namespace DXF.ViewModels
             return modelGroup;
         }
 
+    
     }
+
+
 }
