@@ -6,9 +6,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
 using netDxf;
-using System.Windows.Documents;
-using ClipperLib;
-using System.Windows.Shapes;
+using Csg;
+using static Csg.Solids;
+using System.Windows;
+using Vector3D = Csg.Vector3D;
 
 namespace DXF.ViewModels
 {
@@ -17,8 +18,11 @@ namespace DXF.ViewModels
         public ICommand ApplyCommand { get; }
         public DXFViewModel(NavigationStore navigation, double height)
         {
-            Model = readDFX("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\SamplesV2\\STANDART FUAR SEPERATOR.dxf", height);
-            ApplyCommand = new ApplyCommand(this, navigation);
+            //Model = readDFX("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\SamplesV2\\Düz çoğaltma - SWEDEN - SEPERATOR 2.dxf", height);
+            //ApplyCommand = new ApplyCommand(this, navigation);
+            //CombinedGeometry = createPoligon(5);
+            Model = GetSolid();
+
         }
 
         private string _height;
@@ -50,25 +54,70 @@ namespace DXF.ViewModels
             }
         }
 
-        public GeometryModel3D createPoligon()
+        private CombinedGeometry combinedGeometry;
+        public CombinedGeometry CombinedGeometry
         {
-            var meshBuilder = new MeshBuilder();
-            //points.Add(new System.Windows.Point(p1.X,p1.Y));
-            //points.Add(new System.Windows.Point(p2.X,p2.Y));
-            //points.Add(new System.Windows.Point(p3.X,p3.Y));
-            var points = new Point3DCollection
+            get
             {
-                new Point3D(0,0, 1),
-                new Point3D(1,0, 1),
-                new Point3D(1,1, 1),
-                new Point3D(0,1, 1)
-            };
-            meshBuilder.AddPolygon(points);
-            var mesh = meshBuilder.ToMesh();
-            var material = new DiffuseMaterial(new SolidColorBrush(Colors.Blue));
-            var model = new GeometryModel3D(mesh, material);
-            return model;
+                return combinedGeometry;
+            }
+            set
+            {
+                combinedGeometry = value;
+                OnPropertyChanged(nameof(CombinedGeometry));
+            }
         }
+
+        public Model3DGroup GetSolid()
+        {
+            double BodyWidth = 40;
+            double BodyHeight = 40;
+            double BodyDepth = 40;
+            double BodyDescent = 20;
+            double TotalWidth = 55.5;
+            double BracketHeight = 3;
+            double TotalHeight = 44;
+            double HoleSpacing = 10.0;
+            double HoleDiameter = 4;
+            double HoleInset = 3;
+            Solid body =
+                    Cube(size: new Vector3D(BodyWidth, BodyHeight, BodyDepth)).
+                    Translate(10, 20, 0);
+            //Solid bracket =
+            //    Cube(TotalWidth + 70, BracketHeight, BodyDepth).
+            //    Translate(-30, 20, 0);
+            Solid hole1 =
+                Cylinder(HoleDiameter / 2, 40 * 4, center: true).
+                Translate(15, 20, 10);
+            Solid hole4 =
+                Cylinder(HoleDiameter / 2, 40 * 4, center: true).
+                Translate(TotalWidth / 2 - HoleInset, BodyDescent, HoleSpacing / 2);
+            Solid asd = Difference(body, hole1, hole4).Translate(y: -TotalHeight / 2);
+            var modelGroup = new Model3DGroup();
+            var meshBuilder = new MeshBuilder();
+            foreach (var polygon in asd.Polygons)
+            {
+                var points = new Point3DCollection();
+                foreach (var vertex in polygon.Vertices)
+                {
+
+                    points.Add(new Point3D(vertex.Pos.X, vertex.Pos.Y, vertex.Pos.Z));
+                }
+                if (points.Count > 4)
+                {
+                    points.RemoveAt(4);
+                }
+
+                meshBuilder.AddPolygon(points);
+
+                var mesh = meshBuilder.ToMesh();
+                var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
+                var model = new GeometryModel3D(mesh, material);
+                modelGroup.Children.Add(model);
+            }
+            return modelGroup;
+        }
+
         private Model3DGroup readDFX(string filePath, double height)
         {
             var modelGroup = new Model3DGroup();
@@ -87,7 +136,7 @@ namespace DXF.ViewModels
                 else if (element.GetType() == typeof(netDxf.Entities.Arc))
                     modelGroup.Children.Add(createArcWithLines((netDxf.Entities.Arc)element, height, 50));
             }
-
+            //modelGroup.Children.Add(createPoligon(height));
             return modelGroup;
         }
 
@@ -111,7 +160,7 @@ namespace DXF.ViewModels
             var model = new GeometryModel3D(mesh, material);
 
             //Rotating model
-            Vector3D axis = new Vector3D(0, 0, 1); //In case you want to rotate it about the z-axis
+            System.Windows.Media.Media3D.Vector3D axis = new System.Windows.Media.Media3D.Vector3D(0, 0, 1); //In case you want to rotate it about the z-axis
             Matrix3D transformationMatrix = model.Transform.Value; //Gets the matrix indicating the current transformation value
             transformationMatrix.RotateAt(new Quaternion(axis, angle), center); //Makes a rotation transformation over this matrix
             model.Transform = new MatrixTransform3D(transformationMatrix); //Applies the transformation to your model
@@ -127,7 +176,7 @@ namespace DXF.ViewModels
             double width = 0.01;
             //Length Calculation
             double length = Math.Sqrt(Math.Pow((line.StartPoint.X - line.EndPoint.X), 2) + Math.Pow((line.StartPoint.Y - line.EndPoint.Y), 2));
-            
+
             //Angle Calculatiion
             double angle = Math.Atan((line.StartPoint.X - line.EndPoint.X) / (line.StartPoint.Y - line.EndPoint.Y));
             angle = -angle * 180 / Math.PI;
@@ -137,13 +186,13 @@ namespace DXF.ViewModels
             var mesh = meshBuilder.ToMesh();
             var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
             var model = new GeometryModel3D(mesh, material);
-            
+
             //Rotating model
-            Vector3D axis = new Vector3D(0, 0, 1); //In case you want to rotate it about the z-axis
+            System.Windows.Media.Media3D.Vector3D axis = new System.Windows.Media.Media3D.Vector3D(0, 0, 1); //In case you want to rotate it about the z-axis
             Matrix3D transformationMatrix = model.Transform.Value; //Gets the matrix indicating the current transformation value
             transformationMatrix.RotateAt(new Quaternion(axis, angle), center); //Makes a rotation transformation over this matrix
             model.Transform = new MatrixTransform3D(transformationMatrix); //Applies the transformation to your model
-            
+
             return model;
         }
 
@@ -182,7 +231,7 @@ namespace DXF.ViewModels
             var p2 = solid.SecondVertex;
             var p3 = solid.ThirdVertex;
             var p4 = solid.FourthVertex;
-            
+
             //points.Add(new System.Windows.Point(p1.X,p1.Y));
             //points.Add(new System.Windows.Point(p2.X,p2.Y));
             //points.Add(new System.Windows.Point(p3.X,p3.Y));
@@ -202,7 +251,7 @@ namespace DXF.ViewModels
 
         public GeometryModel3D createArc(netDxf.Entities.Arc arc, double height, int segments)
         {
-            var meshBuilder = new MeshBuilder();           
+            var meshBuilder = new MeshBuilder();
 
             // Create a collection to hold the arc points
             var points = new Point3DCollection();
@@ -245,7 +294,7 @@ namespace DXF.ViewModels
         {
             Model3DGroup modelGroup = new Model3DGroup();
             var meshBuilder = new MeshBuilder();
-            
+
             // Create a collection to hold the arc points
             var points = new Point3DCollection();
             double startRad = 0;
@@ -286,7 +335,7 @@ namespace DXF.ViewModels
             return modelGroup;
         }
 
-    
+
     }
 
 
