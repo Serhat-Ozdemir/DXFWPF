@@ -12,6 +12,9 @@
             <RowDefinition Height="8*"/>
             <RowDefinition Height="2*"/>
         </Grid.RowDefinitions>
+        <!--<Grid>
+            <Path Data="{Binding CombinedGeometry}" Fill="LightGray" Stroke="Black" StrokeThickness="1"/>
+        </Grid>-->
         <helix:HelixViewport3D x:Name="helixViewport" ZoomExtentsWhenLoaded="True">
             <helix:DefaultLights/>
             <!-- The LinesVisual3D will be bound to the ViewModel -->

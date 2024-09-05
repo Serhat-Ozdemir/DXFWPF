@@ -10,6 +10,9 @@ using Csg;
 using static Csg.Solids;
 using System.Windows;
 using Vector3D = Csg.Vector3D;
+using System.Windows.Documents;
+using System.Collections.Generic;
+using DXF.Models;
 
 namespace DXF.ViewModels
 {
@@ -18,11 +21,11 @@ namespace DXF.ViewModels
         public ICommand ApplyCommand { get; }
         public DXFViewModel(NavigationStore navigation, double height)
         {
-            //Model = readDFX("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\SamplesV2\\Düz çoğaltma - SWEDEN - SEPERATOR 2.dxf", height);
-            //ApplyCommand = new ApplyCommand(this, navigation);
+            Model = readDFX("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\SamplesV2\\Separatör_Pneumatrol_rev0.dxf", height);
+            ApplyCommand = new ApplyCommand(this, navigation);
             //CombinedGeometry = createPoligon(5);
-            Model = GetSolid();
-
+            //CombinedGeometry.
+            //Model = GetSolid();
         }
 
         private string _height;
@@ -70,31 +73,47 @@ namespace DXF.ViewModels
 
         public Model3DGroup GetSolid()
         {
-            double BodyWidth = 40;
-            double BodyHeight = 40;
-            double BodyDepth = 40;
-            double BodyDescent = 20;
-            double TotalWidth = 55.5;
-            double BracketHeight = 3;
-            double TotalHeight = 44;
-            double HoleSpacing = 10.0;
-            double HoleDiameter = 4;
-            double HoleInset = 3;
-            Solid body =
-                    Cube(size: new Vector3D(BodyWidth, BodyHeight, BodyDepth)).
-                    Translate(10, 20, 0);
-            //Solid bracket =
-            //    Cube(TotalWidth + 70, BracketHeight, BodyDepth).
-            //    Translate(-30, 20, 0);
-            Solid hole1 =
-                Cylinder(HoleDiameter / 2, 40 * 4, center: true).
-                Translate(15, 20, 10);
-            Solid hole4 =
-                Cylinder(HoleDiameter / 2, 40 * 4, center: true).
-                Translate(TotalWidth / 2 - HoleInset, BodyDescent, HoleSpacing / 2);
-            Solid asd = Difference(body, hole1, hole4).Translate(y: -TotalHeight / 2);
+            //double BodyWidth = 40;
+            //double BodyHeight = 40;
+            //double BodyDepth = 40;
+            //double BodyDescent = 20;
+            //double TotalWidth = 55.5;
+            //double BracketHeight = 3;
+            //double TotalHeight = 44;
+            //double HoleSpacing = 10.0;
+            //double HoleDiameter = 4;
+            //double HoleInset = 3;
+            //Solid body =
+            //        Cube(size: new Vector3D(BodyWidth, BodyHeight, BodyDepth)).
+            //        Translate(10, 20, 0);
+            ////Solid bracket =
+            ////    Cube(TotalWidth + 70, BracketHeight, BodyDepth).
+            ////    Translate(-30, 20, 0);
+            //Solid hole1 =
+            //    Cylinder(HoleDiameter / 2, 40 * 4, center: true).
+            //    Translate(15, 20, 10);
+            //Solid hole4 =
+            //    Cylinder(HoleDiameter / 2, 40 * 4, center: true).
+            //    Translate(TotalWidth / 2 - HoleInset, BodyDescent, HoleSpacing / 2);
+            Solid plane = Cube(size: new Vector3D(50, 50, 5), new Vector3D(0,0,0));
+            Solid hole1 = Cube(size: new Vector3D(2, 5, 5), new Vector3D(0, 22.5, 0));
+            Solid asd = Difference(plane, hole1).Translate(y: -70 / 2);
             var modelGroup = new Model3DGroup();
             var meshBuilder = new MeshBuilder();
+
+            double squareSize = 100; // Size of the square
+            double holeRadius = 20;  // Radius of the circular hole
+            double centerX = squareSize / 2; // Center X of the circle in the square
+            double centerY = squareSize / 2; // Center Y of the circle in the square
+
+            var squareGeometry = new RectangleGeometry(new Rect(0, 0, squareSize, squareSize));
+            var holeGeometry = new EllipseGeometry(new Rect(centerX - holeRadius, centerY - holeRadius, holeRadius * 2, holeRadius * 2));
+
+            var combinedGeometry = new CombinedGeometry(GeometryCombineMode.Exclude, squareGeometry, holeGeometry);
+
+            CombinedGeometry = combinedGeometry;
+            var sss = combinedGeometry.GetOutlinedPathGeometry();
+
             foreach (var polygon in asd.Polygons)
             {
                 var points = new Point3DCollection();
@@ -136,7 +155,8 @@ namespace DXF.ViewModels
                 else if (element.GetType() == typeof(netDxf.Entities.Arc))
                     modelGroup.Children.Add(createArcWithLines((netDxf.Entities.Arc)element, height, 50));
             }
-            //modelGroup.Children.Add(createPoligon(height));
+            //modelGroup.Children.Add(createPolygon(height));
+            //DXFMapMatrix asd = new DXFMapMatrix(modelGroup);
             return modelGroup;
         }
 
@@ -164,7 +184,6 @@ namespace DXF.ViewModels
             Matrix3D transformationMatrix = model.Transform.Value; //Gets the matrix indicating the current transformation value
             transformationMatrix.RotateAt(new Quaternion(axis, angle), center); //Makes a rotation transformation over this matrix
             model.Transform = new MatrixTransform3D(transformationMatrix); //Applies the transformation to your model
-
             return model;
         }
 
@@ -208,6 +227,7 @@ namespace DXF.ViewModels
             var mesh = meshBuilder.ToMesh();
             var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
             var model = new GeometryModel3D(mesh, material);
+
             return model;
         }
         public Model3DGroup createPolyLine(netDxf.Entities.Polyline2D polyline2D, double height)
@@ -319,7 +339,7 @@ namespace DXF.ViewModels
             double angle = arc.StartAngle * Math.PI / 180.0;
             double x = arc.Center.X + (arc.Radius * Math.Cos(angle));
             double y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
-            pStart = new Point3D(x, y, height - 0.05);
+            pStart = new Point3D(x, y, 0);
 
             // Generate the points along the arc
             for (int i = 1; i <= segments; i++)
@@ -328,14 +348,30 @@ namespace DXF.ViewModels
                 angle = angle + i * angleStep;
                 x = arc.Center.X + (arc.Radius * Math.Cos(angle));
                 y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
-                pEnd = new Point3D(x, y, height - 0.05);
+                pEnd = new Point3D(x, y, 0);
                 modelGroup.Children.Add(createLine(pStart.X, pStart.Y, pEnd.X, pEnd.Y, height));
                 pStart = pEnd;
             }
+            var sdas = modelGroup.Children;
             return modelGroup;
         }
 
-
+        public GeometryModel3D createPolygon(double height)
+        {
+            var meshBuilder = new MeshBuilder();
+            var polygonPoints = new List<Point3D>
+            {
+                new Point3D(-10, -10,2),
+                new Point3D(780, -10,2),
+                new Point3D(780, 580,2),
+                new Point3D(-10, 580,2),
+            };
+            meshBuilder.AddPolygon(polygonPoints);
+            var mesh = meshBuilder.ToMesh();
+            var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
+            var model = new GeometryModel3D(mesh, material);
+            return model;
+        }
     }
 
 
