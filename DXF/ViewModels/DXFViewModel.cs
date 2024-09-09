@@ -26,16 +26,16 @@ namespace DXF.ViewModels
     public class DXFViewModel : ViewModelBase
     {
         public ICommand ApplyCommand { get; }
-        List<List<Point>> borders;
+        List<Line> borders;
         public DXFViewModel(NavigationStore navigation, double height)
         {
-            borders = new List<List<Point>>();
-            Model = readDFX("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\SamplesV2\\Düz çoğaltma - SWEDEN - SEPERATOR 2.dxf", height);
+            borders = new List<Line>();
+            //Model = readDFX("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\SamplesV2\\Separatör_Pneumatrol_rev0.dxf", height);
             ApplyCommand = new ApplyCommand(this, navigation);
-            getPlynomIndices(Model, borders, 5);
+            //Model = createPolygon(Model, borders, 5);
             //CombinedGeometry = createPoligon(5);
             //CombinedGeometry.
-            //Model = GetSolid("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\SamplesV2\\Separatör_Pneumatrol_rev0.dxf", height);
+            Model = GetSolid("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\SamplesV2\\STANDART FUAR SEPERATOR.dxf", height);
             //Model.Children.Add(createPolygon(Model, height));
 
         }
@@ -84,151 +84,99 @@ namespace DXF.ViewModels
         }
 
         #region SolidGeometry
-        ////private Solid createC()
-        ////{
-        ////    var modelGroup = new Solid();
+
+        public Model3DGroup GetSolid(string filePath, double height)
+        {
+            var dxf = DxfDocument.Load(filePath);
+            var entity = dxf.Entities;
+
+            double[] sizes = findSizes(entity);
+
+            Solid body = Cube(size: new Vector3D(sizes[0], height, sizes[1])).Translate(sizes[2], 0, sizes[3]);
+            Solid holes = createCylinder(entity, height);
+            var modelGroup = new Model3DGroup();
+            var meshBuilder = new MeshBuilder();
+            Solid asd = Difference(body, holes);
+
+            asd = asd.Transform(Matrix4x4.RotationX(90));
+
+            foreach (var polygon in asd.Polygons)
+            {
+                var points = new Point3DCollection();
+                foreach (var vertex in polygon.Vertices)
+                {
+
+                    points.Add(new Point3D(vertex.Pos.X, vertex.Pos.Y, vertex.Pos.Z));
+                }
+                if (points.Count < 5)
+                {
+                    meshBuilder.AddPolygon(points);
+                }
 
 
-        ////    foreach (var element in entity.All)
-        ////    {
-
-        ////        if (element.GetType() == typeof(netDxf.Entities.Circle))
-        ////            modelGroup.Union(createCylinder((netDxf.Entities.Circle)element, height));
-        ////    }
-
-        ////    //DXFMapMatrix asd = new DXFMapMatrix(modelGroup);
-
-        ////    return modelGroup;
-        ////}
-
-        //public Model3DGroup GetSolid(string filePath, double height)
-        //{
-        //    //double BodyWidth = 300;
-        //    //double BodyHeight = 5;
-        //    //double BodyDepth = 300;
-        //    //double BodyDescent = 20;
-        //    //double TotalWidth = 55.5;
-        //    //double BracketHeight = 3;
-        //    //double TotalHeight = 44;
-        //    //double HoleSpacing = 10.0;
-        //    //double HoleDiameter = 4;
-        //    //double HoleInset = 3;
-        //    //Solid body =
-        //    //        Cube(size: new Vector3D(BodyWidth, BodyHeight, BodyDepth)).
-        //    //        Translate(10, 20, 0);
-        //    ////Solid bracket =
-        //    ////    Cube(TotalWidth + 70, BracketHeight, BodyDepth).
-        //    ////    Translate(-30, 20, 0);
-        //    //CylinderOptions co = new CylinderOptions();            
-        //    //Solid holex = Cylinder(co);
-        //    //Solid hole1 =
-        //    //    Cylinder(HoleDiameter / 2, 40 * 4, center: true).
-        //    //    Translate(15, 20, 10);
-        //    //Solid hole4 =
-        //    //    Cylinder(HoleDiameter / 2, 40 * 4, center: true).
-        //    //   Translate(TotalWidth / 2 - HoleInset, BodyDescent, HoleSpacing / 2);
-        //    ////Solid plane = Cube(size: new Vector3D(50, 50, 5), new Vector3D(0, 0, 0));
-        //    ////Solid hole1 = Cube(size: new Vector3D(2, 5, 5), new Vector3D(0, 22.5, 0));
-        //    //Solid asd = Difference(body, hole1).Translate(y: -70 / 2);
-        //    var dxf = DxfDocument.Load(filePath);
-        //    var entity = dxf.Entities;
-
-        //    double[] sizes = findSizes(entity);
-        //    var centerX = (sizes[2] + sizes[4])/2;
-        //    var centery = (sizes[3] + sizes[5])/2;
-        //    Solid body = Cube(size: new Vector3D(200, 5, 200)).Translate(-10, 0,-10);
-
-        //    Solid asd = createCylinder(entity, 10, body);
-        //    var modelGroup = new Model3DGroup();
-        //    var meshBuilder = new MeshBuilder();
-
-        //    //double squareSize = 100; // Size of the square
-        //    //double holeRadius = 20;  // Radius of the circular hole
-        //    //double centerX = squareSize / 2; // Center X of the circle in the square
-        //    //double centerY = squareSize / 2; // Center Y of the circle in the square
-
-        //    //var squareGeometry = new RectangleGeometry(new Rect(0, 0, squareSize, squareSize));
-        //    //var holeGeometry = new EllipseGeometry(new Rect(centerX - holeRadius, centerY - holeRadius, holeRadius * 2, holeRadius * 2));
-
-        //    //var combinedGeometry = new CombinedGeometry(GeometryCombineMode.Exclude, squareGeometry, holeGeometry);
-
-        //    //CombinedGeometry = combinedGeometry;
-        //    //var sss = combinedGeometry.GetOutlinedPathGeometry();
-
-        //    foreach (var polygon in asd.Polygons)
-        //    {
-        //        var points = new Point3DCollection();
-        //        foreach (var vertex in polygon.Vertices)
-        //        {
-
-        //            points.Add(new Point3D(vertex.Pos.X, vertex.Pos.Y, vertex.Pos.Z));
-        //        }
-        //        if (points.Count < 5)
-        //        {
-        //            meshBuilder.AddPolygon(points);
-        //        }
+                var mesh = meshBuilder.ToMesh();
+                var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
+                var model = new GeometryModel3D(mesh, material);
+                modelGroup.Children.Add(model);
+            }
+            return modelGroup;
+        }
 
 
-        //        var mesh = meshBuilder.ToMesh();
-        //        var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
-        //        var model = new GeometryModel3D(mesh, material);
-        //        modelGroup.Children.Add(model);
-        //    }
-        //    return modelGroup;
-        //}
+        public Solid createCylinder(DrawingEntities entity, double height)
+        {
+            Solid cylinders = new Solid();
+            foreach (netDxf.Entities.Circle circle in entity.Circles)
+            {
+                Vector3D start = (true ? new Vector3D(circle.Center.X, (0.0 - height * 2) / 2.0, circle.Center.Y) : new Vector3D(0.0, 0.0, 0.0));
+                Vector3D end = (true ? new Vector3D(circle.Center.X, height * 2 / 2.0, circle.Center.Y) : new Vector3D(0.0, height, 0.0));
+                Solid cylinder = Cylinder(new CylinderOptions
+                {
+                    Start = start,
+                    End = end,
+                    RadiusStart = circle.Radius,
+                    RadiusEnd = circle.Radius,
+                    Resolution = 10
+
+                });
+                cylinders = Union(cylinders, cylinder);
+
+            }
+
+            return cylinders;
+        }
 
 
-        //public Solid createCylinder(DrawingEntities entity, double height, Solid Cube)
-        //{
-        //    Solid cylinders = new Solid();
-        //    foreach (netDxf.Entities.Circle circle in entity.Circles)
-        //    {
-        //        Vector3D start = (true ? new Vector3D(0.0, (0.0 - height) / 2.0, 0.0) : new Vector3D(0.0, 0.0, 0.0));
-        //        Vector3D end = (true ? new Vector3D(0.0, height / 2.0, 0.0) : new Vector3D(0.0, height, 0.0));
-        //        Solid cylinder = Cylinder(new CylinderOptions
-        //        {
-        //            Start = start,
-        //            End = end,
-        //            RadiusStart = circle.Radius,
-        //            RadiusEnd = circle.Radius,
-        //            Resolution = 12
+        public double[] findSizes(DrawingEntities entity)
+        {
+            double[] sizes = new double[4];
+            sizes[2] = 9999;
+            sizes[3] = 9999;
+            foreach (netDxf.Entities.Line line in entity.Lines)
+            {
+                double length = Math.Sqrt(Math.Pow((line.StartPoint.X - line.EndPoint.X), 2) + Math.Pow((line.StartPoint.Y - line.EndPoint.Y), 2));
+                if (length > sizes[1] && length > sizes[0])
+                {
+                    sizes[1] = sizes[0];
+                    sizes[0] = length;
+                }
+                else if (length > sizes[1] && length < sizes[0])
+                {
+                    sizes[1] = length;
+                }
 
-        //        });
-        //        cylinder.Translate(circle.Center.X, circle.Center.Y, 0);
-        //        cylinders = Difference(Cube, cylinder);
+                if (line.StartPoint.X < sizes[2])
+                    sizes[2] = line.StartPoint.X;
+                if (line.EndPoint.X < sizes[2])
+                    sizes[2] = line.EndPoint.X;
 
-        //    }
-
-        //    return cylinders;
-        //}
-
-
-        //public double[] findSizes(DrawingEntities entity)
-        //{
-        //    double[] sizes = new double[6];            
-
-        //    foreach (netDxf.Entities.Line line in entity.Lines)
-        //    {
-        //        double length = Math.Sqrt(Math.Pow((line.StartPoint.X - line.EndPoint.X), 2) + Math.Pow((line.StartPoint.Y - line.EndPoint.Y), 2));
-        //        if(length > sizes[1] && length > sizes[0])
-        //        {
-        //            sizes[1] = sizes[0];
-        //            sizes[0] = length;
-        //            sizes[4] = sizes[2];
-        //            sizes[5] = sizes[3];
-        //            sizes[2] = line.StartPoint.X;
-        //            sizes[3] = line.StartPoint.Y;
-        //        }
-        //        else if(length > sizes[1] && length < sizes[0])
-        //        {
-        //            sizes[1] = length;
-        //            sizes[4] = line.StartPoint.X;
-        //            sizes[5] = line.StartPoint.Y;
-        //        }                                     
-        //        //    modelGroup.Union.Add(createArcWithLines((netDxf.Entities.Arc)element, height, 50));
-        //    }
-        //    return sizes;
-        //}
+                if (line.StartPoint.Y < sizes[3])
+                    sizes[3] = line.StartPoint.Y;
+                if (line.EndPoint.Y < sizes[3])
+                    sizes[3] = line.EndPoint.Y;
+            }
+            return sizes;
+        }
 
         #endregion
 
@@ -255,12 +203,11 @@ namespace DXF.ViewModels
                     modelGroup.Children.Add(createArcWithLines((netDxf.Entities.Arc)element, height, 50));
             }
 
-            //DXFMapMatrix asd = new DXFMapMatrix(modelGroup);
             a = 2;
             return modelGroup;
         }
 
-        public GeometryModel3D createLine(double startPointX, double startPointY, double endPointX, double endPointY, double height)
+        public GeometryModel3D createLine(double startPointX, double startPointY, double endPointX, double endPointY, double height, double width)
         {
             List<Point> points = new List<Point>
             {
@@ -271,7 +218,7 @@ namespace DXF.ViewModels
             var meshBuilder = new MeshBuilder();
             //Center Point of the box
             Point3D center = new Point3D((startPointX + endPointX) / 2, (startPointY + endPointY) / 2, 0 + height / 2);
-            double width = 0.01;
+            //double width = 0.01;
             //Length Calculation
             double length = Math.Sqrt(Math.Pow((startPointX - endPointX), 2) + Math.Pow((startPointY - endPointY), 2));
 
@@ -291,8 +238,8 @@ namespace DXF.ViewModels
             transformationMatrix.RotateAt(new Quaternion(axis, angle), center); //Makes a rotation transformation over this matrix
             model.Transform = new MatrixTransform3D(transformationMatrix); //Applies the transformation to your model
 
-            borders.Add(points);
-
+            Line border = new Line(points[0], points[1], length, angle);
+            borders.Add(border);
             return model;
         }
 
@@ -303,10 +250,6 @@ namespace DXF.ViewModels
                 new Point(line.StartPoint.X, line.StartPoint.Y),
                 new Point(line.EndPoint.X, line.EndPoint.Y)
             };
-            if (line.StartPoint.X == -10)
-            {
-                int ass = 5;
-            }
 
             var meshBuilder = new MeshBuilder();
             //Center Point of the box
@@ -331,8 +274,9 @@ namespace DXF.ViewModels
             transformationMatrix.RotateAt(new Quaternion(axis, angle), center); //Makes a rotation transformation over this matrix
             model.Transform = new MatrixTransform3D(transformationMatrix); //Applies the transformation to your model
 
-            borders.Add(points);
-
+            Line border = new Line(points[0], points[1], length, angle);
+            borders.Add(border);
+            
             return model;
         }
 
@@ -360,7 +304,7 @@ namespace DXF.ViewModels
                 // Get the start and end points of each segment
                 var start = polyline2D.Vertexes[i].Position;
                 var end = polyline2D.Vertexes[i + 1].Position;
-                modelGroup.Children.Add(createLine(start.X, start.Y, end.X, end.Y, height));
+                modelGroup.Children.Add(createLine(start.X, start.Y, end.X, end.Y, height, 0.01));
             }
             return modelGroup;
         }
@@ -470,173 +414,240 @@ namespace DXF.ViewModels
                 x = arc.Center.X + (arc.Radius * Math.Cos(angle));
                 y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
                 pEnd = new Point3D(x, y, 0);
-                modelGroup.Children.Add(createLine(pStart.X, pStart.Y, pEnd.X, pEnd.Y, height));
+                modelGroup.Children.Add(createLine(pStart.X, pStart.Y, pEnd.X, pEnd.Y, height, 0.01));
                 pStart = pEnd;
             }
             var sdas = modelGroup.Children;
             return modelGroup;
         }
 
-        public GeometryModel3D createPolygon(Model3DGroup modelgroup, double height)
+        public Model3DGroup createPolygon(Model3DGroup modelgroup, List<List<Point>> borders, double height)
         {
             var meshBuilder = new MeshBuilder();
-
-            var polygonPoints = new List<Point3D>
+            var group = new Model3DGroup();
+            var polygonPoints = new List<List<Point3D>>();
+            int i = 0;
+            var mesh = new MeshGeometry3D();
+            foreach (var points in polygonPoints)
             {
-                new Point3D(modelgroup.Bounds.X, modelgroup.Bounds.Y, 2),
-                new Point3D(modelgroup.Bounds.X + modelgroup.Bounds.SizeX, modelgroup.Bounds.Y,2),
-                new Point3D(modelgroup.Bounds.X + modelgroup.Bounds.SizeX, modelgroup.Bounds.Y+modelgroup.Bounds.SizeY ,2),
-            };
-            meshBuilder.AddPolygon(polygonPoints);
-            var mesh = meshBuilder.ToMesh();
-            var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
-            var model = new GeometryModel3D(mesh, material);
-            return model;
+                meshBuilder.AddPolygon(points);
+                mesh = meshBuilder.ToMesh();
+                var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
+                var model = new GeometryModel3D(mesh, material);
+                group.Children.Add(model);
+
+                i++;
+            }
+            return group;
         }
 
-        public List<List<Point>> getPlynomIndices(Model3DGroup model, List<List<Point>> borders, double height)
+        public List<List<Line>> getConsequtiveLines(List<Line> lines)
         {
-            List<List<Point>> polynomIndices = new List<List<Point>>();
-            bool isUpTriangle = true;
-            int[,] matrix = getMatrix(model, borders);
-            for (int i = 0; i < matrix.GetLength(0); i++)
+            while (lines.Count > 0)
             {
-                for (int j = 0; j < matrix.GetLength(1); j++)
-                {
-                    if (isUpTriangle)
-                    {
-                        if (matrix[i, j] != 2 && matrix[i, j+1] != 2 && matrix[i+1, j+1] != 2)
-                        {
-                            List<Point> points = new List<Point>();
-                            //points.Add(new Point();
-                            //points.Add();
-                            //points.Add();
-                        }
-                    }
-                    else
-                    {
-
-                    }
-                }
+                Line line = lines[0];
             }
             return null;
         }
 
-        public int[,] getMatrix(Model3DGroup model, List<List<Point>> points)
-        {
-            var bounds = model.Bounds;
-            int xlength = Convert.ToInt32(bounds.SizeX);
-            int ylength = Convert.ToInt32(bounds.SizeY);
-            int modelStartX = Convert.ToInt32(bounds.X);
-            int modelStartY = Convert.ToInt32(bounds.Y);
-
-            int[,] matrix = new int[ylength + 1, xlength + 1];
-            int startX, startY, endX, endY, length;
-            int add = 0;
-            foreach (var pointList in points)
-            {
-                startX = Convert.ToInt32((pointList[0].X - modelStartX));
-                startY = Convert.ToInt32((pointList[0].Y - modelStartY));
-                endX = Convert.ToInt32((pointList[1].X - modelStartX));
-                endY = Convert.ToInt32((pointList[1].Y - modelStartY));
-                length = Convert.ToInt32(Math.Sqrt(Math.Pow((startX - endX), 2) + Math.Pow((startY - endY), 2)));
-                matrix[startY, startX] = 1;
-                matrix[endY, endX] = 1;
-                Point[] pointsToFillBetween = new Point[length];
-                if (length > 0)
-                {
-                    pointsToFillBetween = getPoints(length * 2, startX, startY, endX, endY);
-                }
-
-                foreach (var pointToFillBetween in pointsToFillBetween)
-                {
-                    matrix[Convert.ToInt32(pointToFillBetween.Y), Convert.ToInt32(pointToFillBetween.X)] = 1;
-                }
-
-            }
-            matrix = fillMatrix(matrix, xlength, ylength);
-            string filePath = "matrix_output.txt";
-
-            // Using StreamWriter to write the matrix to the file
-            using (StreamWriter writer = new StreamWriter(filePath))
-            {
-                for (int i = 0; i < matrix.GetLength(0); i++)
-                {
-                    for (int j = 0; j < matrix.GetLength(1); j++)
-                    {
-                        // Write each element and a tab for formatting
-                        writer.Write(matrix[i, j]);
-                    }
-                    // Write a new line after each row
-                    writer.WriteLine();
-                }
-            }
 
 
-            return matrix;
-        }
 
-        public int[,] fillMatrix(int[,] matrix, int xlength, int ylength)
-        {
-            bool isOnProcess = false;
-            for (int i = 0; i < matrix.GetLength(0) - 1; i++)
-            {
-                for (int j = 0; j < matrix.GetLength(1) - 1; j++)
-                {
-                    if (matrix[i, j] == 0)
-                    {
-                        //do nothing
-                    }
 
-                    else if (matrix[i, j] == 1 && !isBorder(xlength, ylength, i, j))
-                    {
-                        if (matrix[i, j + 1] != 1 && !isOnProcess)
-                        {
-                            isOnProcess = true;
-                            j++; //Sets the next point as filled here because due to for design
-                        }
-                        else if (matrix[i, j + 1] != 1 && isOnProcess)
-                        {
-                            isOnProcess = false;
-                        }
-                    }
-                    if (isOnProcess)
-                        matrix[i, j] = 2;
 
-                }
-                isOnProcess = false;
 
-            }
-            return matrix;
-        }
 
-        public bool isBorder(int xLength, int yLength, int i, int j)
-        {
-            if ((i == 0 || j == 0))
-                return true;
-            else if ((i == xLength || j == yLength))
-                return true;
-            return false;
-        }
-        public Point[] getPoints(int quantity, int startX, int startY, int endX, int endY)
-        {
-            var points = new Point[quantity];
-            int ydiff = endY - startY, xdiff = endX - startX;
-            double slope = (double)(endY - startY) / (endX - startX);
-            double x, y;
 
-            --quantity;
 
-            for (double i = 0; i < quantity; i++)
-            {
-                y = slope == 0 ? 0 : ydiff * (i / quantity);
-                x = slope == 0 ? xdiff * (i / quantity) : y / slope;
-                points[(int)i] = new Point((int)Math.Round(x) + startX, (int)Math.Round(y) + startY);
-            }
-            Point pEnd = new Point(endX, endY);
-            points[quantity] = pEnd;
-            return points;
-        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        //public List<List<Point3D>> getPlynomIndices(Model3DGroup model, List<List<Point>> borders, double height)
+        //{
+        //    List<List<Point3D>> polynomIndices = new List<List<Point3D>>();
+        //    Point3D p1, p2 = new Point3D(), p3 = new Point3D(), p4;
+
+        //    bool isAssigned = false;
+        //    int[,] matrix = getMatrix(model, borders);
+        //    for (int i = 2; i < matrix.GetLength(0) - 2; i++)
+        //    {
+        //        int j = 2;
+        //        p1 = new Point3D(j, i, height);
+        //        for (j = 2; j < matrix.GetLength(1) - 2; j++)
+        //        {
+        //            if (matrix[i, j + 1] == 2)
+        //            {
+        //                if (!isAssigned)
+        //                {
+
+        //                    p2 = new Point3D(j, i, height);
+        //                    if (matrix[i + 1, j + 1] < 2)
+        //                        p3 = new Point3D(j + 1, i + 1, height);
+        //                    else if (matrix[i + 1, j] < 2)
+        //                        p3 = new Point3D(j, i + 1, height);
+        //                    else if (matrix[i + 1, j - 1] < 2)
+        //                        p3 = new Point3D(j - 1, i + 1, height);
+        //                    isAssigned = true;
+        //                    p4 = new Point3D(p1.X, i + 1, height);
+        //                    List<Point3D> points = new List<Point3D>();
+        //                    points.Add(p1);
+        //                    points.Add(p2);
+        //                    points.Add(p3);
+        //                    points.Add(p4);
+        //                    polynomIndices.Add(points);
+        //                }
+        //            }
+        //            if (isAssigned && matrix[i, j + 1] == 1)
+        //            {
+        //                isAssigned = false;
+        //                p1 = new Point3D(j + 1, i, height);
+        //            }
+        //        }
+        //        isAssigned = false;
+
+        //    }
+        //    return polynomIndices;
+        //}
+
+        //public int[,] getMatrix(Model3DGroup model, List<List<Point>> points)
+        //{
+        //    var bounds = model.Bounds;
+        //    int xlength = Convert.ToInt32(bounds.SizeX);
+        //    int ylength = Convert.ToInt32(bounds.SizeY);
+        //    int modelStartX = Convert.ToInt32(bounds.X);
+        //    int modelStartY = Convert.ToInt32(bounds.Y);
+
+        //    int[,] matrix = new int[ylength + 1, xlength + 1];
+        //    int startX, startY, endX, endY, length;
+        //    int add = 0;
+        //    foreach (var pointList in points)
+        //    {
+        //        startX = Convert.ToInt32((pointList[0].X - modelStartX));
+        //        startY = Convert.ToInt32((pointList[0].Y - modelStartY));
+        //        endX = Convert.ToInt32((pointList[1].X - modelStartX));
+        //        endY = Convert.ToInt32((pointList[1].Y - modelStartY));
+        //        length = Convert.ToInt32(Math.Sqrt(Math.Pow((startX - endX), 2) + Math.Pow((startY - endY), 2)));
+        //        matrix[startY, startX] = 1;
+        //        matrix[endY, endX] = 1;
+        //        Point[] pointsToFillBetween = new Point[length];
+        //        if (length > 0)
+        //        {
+        //            pointsToFillBetween = getPoints(length * 3, startX, startY, endX, endY);
+        //        }
+
+        //        foreach (var pointToFillBetween in pointsToFillBetween)
+        //        {
+        //            matrix[Convert.ToInt32(pointToFillBetween.Y), Convert.ToInt32(pointToFillBetween.X)] = 1;
+        //        }
+
+        //    }
+        //    matrix = fillMatrix(matrix, xlength, ylength);
+        //    string filePath = "C:\\Users\\Lenovo\\Downloads\\matrix_output.txt";
+
+        //    // Using StreamWriter to write the matrix to the file
+        //    using (StreamWriter writer = new StreamWriter(filePath))
+        //    {
+        //        for (int i = 0; i < matrix.GetLength(0); i++)
+        //        {
+        //            for (int j = 0; j < matrix.GetLength(1); j++)
+        //            {
+        //                // Write each element and a tab for formatting
+        //                writer.Write(matrix[i, j]);
+        //            }
+        //            // Write a new line after each row
+        //            writer.WriteLine();
+        //        }
+        //    }
+
+
+        //    return matrix;
+        //}
+
+        //public int[,] fillMatrix(int[,] matrix, int xlength, int ylength)
+        //{
+        //    bool isOnProcess = false;
+        //    for (int i = 0; i < matrix.GetLength(0) - 1; i++)
+        //    {
+        //        for (int j = 0; j < matrix.GetLength(1) - 1; j++)
+        //        {
+        //            if (matrix[i, j] == 0)
+        //            {
+        //                //do nothing
+        //            }
+
+        //            else if (matrix[i, j] == 1 && !isBorder(xlength, ylength, i, j))
+        //            {
+        //                if (matrix[i, j + 1] != 1 && !isOnProcess && !isSingular(i, j, matrix))
+        //                {
+        //                    isOnProcess = true;
+        //                    j++; //Sets the next point as filled here  due to 'for' design
+        //                }
+        //                else if (matrix[i, j + 1] != 1 && isOnProcess)
+        //                {
+        //                    isOnProcess = false;
+        //                }
+        //            }
+        //            if (isOnProcess)
+        //                matrix[i, j] = 2;
+
+        //        }
+        //        isOnProcess = false;
+
+        //    }
+        //    return matrix;
+        //}
+        //public bool isSingular(int i, int j, int[,] matrix)
+        //{
+        //    int pointsAround = 0;
+        //    if (matrix[i - 1, j - 1] == 1 || matrix[i - 1, j] == 1 || matrix[i - 1, j + 1] == 1)
+        //        pointsAround++;
+        //    if (matrix[i + 1, j - 1] == 1 || matrix[i + 1, j] == 1 || matrix[i + 1, j + 1] == 1)
+        //        pointsAround++;
+        //    if (matrix[i, j - 1] == 1)
+        //        pointsAround = 1;
+
+        //    return pointsAround != 2;
+        //}
+        //public bool isBorder(int xLength, int yLength, int i, int j)
+        //{
+        //    if ((i == 0 || j == 0))
+        //        return true;
+        //    else if ((i == xLength || j == yLength))
+        //        return true;
+        //    return false;
+        //}
+        //public Point[] getPoints(int quantity, int startX, int startY, int endX, int endY)
+        //{
+        //    var points = new Point[quantity];
+        //    int ydiff = endY - startY, xdiff = endX - startX;
+        //    double slope = (double)(endY - startY) / (endX - startX);
+        //    double x, y;
+
+        //    --quantity;
+
+        //    for (double i = 0; i < quantity; i++)
+        //    {
+        //        y = slope == 0 ? 0 : ydiff * (i / quantity);
+        //        x = slope == 0 ? xdiff * (i / quantity) : y / slope;
+        //        points[(int)i] = new Point((int)Math.Round(x) + startX, (int)Math.Round(y) + startY);
+        //    }
+        //    Point pEnd = new Point(endX, endY);
+        //    points[quantity] = pEnd;
+        //    return points;
+        //}
 
         #endregion
     }

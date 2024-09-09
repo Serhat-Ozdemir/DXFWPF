@@ -240,7 +240,7 @@
     </ApplicationDefinition>
     <Compile Include="Commands\ApplyCommand.cs" />
     <Compile Include="Commands\CommandBase.cs" />
-    <Compile Include="Models\DXFMapMatrix.cs" />
+    <Compile Include="Models\Line.cs" />
     <Compile Include="Stores\NavigationStore.cs" />
     <Compile Include="ViewModels\DXFViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
