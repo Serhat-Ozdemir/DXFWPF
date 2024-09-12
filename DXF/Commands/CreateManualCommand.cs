@@ -23,11 +23,10 @@ namespace DXF.Commands
 
         public override void Execute(object parameter)
         {
-
-            if (true)
+            try
             {
-
-                _DXFviewModel.Model = _DXFviewModel.GetSolid(Convert.ToDouble(_DXFviewModel.Height));
+                double height = Convert.ToDouble(_DXFviewModel.Height);
+                _DXFviewModel.Model = _DXFviewModel.GetSolid(height);
                 if (_DXFviewModel.Model == null) return;
 
                 Rect3D bounds = _DXFviewModel.Model.Bounds;
@@ -41,10 +40,13 @@ namespace DXF.Commands
                 _DXFviewModel.CameraPosition = new Point3D(center.X, center.Y, center.Z + distance);
                 _DXFviewModel.CameraLookDirection = new System.Windows.Media.Media3D.Vector3D(center.X - _DXFviewModel.CameraPosition.X, center.Y - _DXFviewModel.CameraPosition.Y, center.Z - _DXFviewModel.CameraPosition.Z);
 
-                //_navigationStore.CurrentViewModel = new DXFViewModel(_navigationStore, Convert.ToDouble(_DXFviewModel.Height), _DXFviewModel.filePath);
             }
-            else
+            catch 
+            {
                 giveError();
+            }
+
+                
         }
 
         public void giveError()

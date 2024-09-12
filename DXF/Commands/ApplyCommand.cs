@@ -23,6 +23,16 @@ namespace DXF.Commands
 
         public override void Execute(object parameter)
         {
+            double height = 0;
+            try
+            {
+                height = Convert.ToDouble(_DXFviewModel.Height);
+            }
+            catch
+            {
+                giveError();
+                return;
+            }
 
             if (_DXFviewModel.FilePath != null)
             {

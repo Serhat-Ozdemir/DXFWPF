@@ -29,6 +29,16 @@ namespace DXF.Commands
             bool? success = fileDialog.ShowDialog();
             if (success == true)
             {
+                double height = 0;
+                try
+                {
+                    height = Convert.ToDouble(_DXFviewModel.Height);
+                }
+                catch
+                {
+                    giveError();
+                    return;
+                }
                 _DXFviewModel.FilePath = fileDialog.FileName;
                 _DXFviewModel.Model = _DXFviewModel.GetSolid(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));
 
@@ -44,13 +54,7 @@ namespace DXF.Commands
 
                 _DXFviewModel.CameraPosition = new Point3D(center.X, center.Y, center.Z + distance);
                 _DXFviewModel.CameraLookDirection = new System.Windows.Media.Media3D.Vector3D(center.X - _DXFviewModel.CameraPosition.X, center.Y - _DXFviewModel.CameraPosition.Y, center.Z - _DXFviewModel.CameraPosition.Z);
-                //    new PerspectiveCamera
-                //{
-                //    Position = ,
-                //    LookDirection = new System.Windows.Media.Media3D.Vector3D(center.X - _DXFviewModel.Camera.Position.X, center.Y - _DXFviewModel.Camera.Position.Y, center.Z - _DXFviewModel.Camera.Position.Z),
-                //    UpDirection = new Vector3D(0, 1, 0),
-                //    FieldOfView = 45
-                //};
+
             }
             else
                 giveError();
