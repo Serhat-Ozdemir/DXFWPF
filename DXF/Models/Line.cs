@@ -13,6 +13,7 @@ namespace DXF.Models
         public Point endPoint;
         public double length;
         public double angle;
+        public int connectedLines;
 
         public Line (Point startPoint, Point endPoint, double length, double angle)
         {
@@ -20,6 +21,7 @@ namespace DXF.Models
             this.endPoint = endPoint;
             this.length = length;
             this.angle = angle;
+            connectedLines = 0;
         }
 
     }

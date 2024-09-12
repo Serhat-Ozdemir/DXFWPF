@@ -24,9 +24,15 @@ namespace DXF.Commands
         public override void Execute(object parameter)
         {
 
-            if (true)
+            if (_DXFviewModel.FilePath != null)
             {
-                _navigationStore.CurrentViewModel = new DXFViewModel(_navigationStore, Convert.ToDouble(_DXFviewModel.Height));
+
+                _DXFviewModel.Model = _DXFviewModel.GetSolid(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));
+                //_navigationStore.CurrentViewModel = new DXFViewModel(_navigationStore, Convert.ToDouble(_DXFviewModel.Height), _DXFviewModel.filePath);
+            }
+            else if (_DXFviewModel.Model != null)
+            {
+                _DXFviewModel.Model = _DXFviewModel.GetSolid(Convert.ToDouble(_DXFviewModel.Height));
             }
             else
                 giveError();
@@ -34,7 +40,7 @@ namespace DXF.Commands
 
         public void giveError()
         {
-            MessageBoxResult result = MessageBox.Show("Choose Something To Delete",
+            MessageBoxResult result = MessageBox.Show("Select A File First",
                                           "Error",
                                           MessageBoxButton.OK, MessageBoxImage.Error);
         }

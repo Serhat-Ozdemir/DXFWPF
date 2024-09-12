@@ -20,24 +20,87 @@ using System.IO;
 using netDxf.Collections;
 using SharpDX.Direct3D11;
 using System.Collections;
+using Aspose.ThreeD;
 
 namespace DXF.ViewModels
 {
     public class DXFViewModel : ViewModelBase
     {
         public ICommand ApplyCommand { get; }
-        List<Line> borders;
+        public ICommand SelectFileCommand { get; }
+        public ICommand CreateManualCommand { get; }
+
         public DXFViewModel(NavigationStore navigation, double height)
         {
-            borders = new List<Line>();
+            Height = Convert.ToString(height);
             //Model = readDFX("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\SamplesV2\\Separatör_Pneumatrol_rev0.dxf", height);
             ApplyCommand = new ApplyCommand(this, navigation);
+            SelectFileCommand = new SelectFileCommand(this, navigation);
+            CreateManualCommand = new CreateManualCommand(this, navigation);
+            Vertex[] vertices = new Vertex[5];
+            vertices[0] = new Vertex(new Vector3D(0, 0, 0), new Vector2D(0, 0));
+            vertices[1] = new Vertex(new Vector3D(2, 0, 0), new Vector2D(0, 0));
+            vertices[2] = new Vertex(new Vector3D(2, 2, 0), new Vector2D(0, 0));
+            vertices[3] = new Vertex(new Vector3D(1, 3, 0), new Vector2D(0, 0));
+            vertices[4] = new Vertex(new Vector3D(0, 2, 0), new Vector2D(0, 0));
+            var sol = new Csg.Polygon(vertices);
+            Solid solid = new Solid();
+            StreamWriter writer = new StreamWriter("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            sol.WriteStl(writer);
+            writer.Close();
+            var importer = new ModelImporter();
+            var modelGroup = importer.Load("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            //Model = modelGroup;
             //Model = createPolygon(Model, borders, 5);
             //CombinedGeometry = createPoligon(5);
             //CombinedGeometry.
-            Model = GetSolid("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\SamplesV2\\STANDART FUAR SEPERATOR.dxf", height);
+            //if(FilePath != null)
+            //    Model = GetSolid(FilePath, height);
             //Model.Children.Add(createPolygon(Model, height));
 
+        }
+
+        private Point3D _cameraPosition;
+        public Point3D CameraPosition
+        {
+            get
+            {
+                return _cameraPosition;
+            }
+            set
+            {
+                _cameraPosition = value;
+                OnPropertyChanged(nameof(CameraPosition));
+            }
+        }
+
+        private System.Windows.Media.Media3D.Vector3D _cameraLookDirection;
+        public System.Windows.Media.Media3D.Vector3D CameraLookDirection
+        {
+            get
+            {
+                return _cameraLookDirection;
+            }
+            set
+            {
+                _cameraLookDirection = value;
+                OnPropertyChanged(nameof(CameraLookDirection));
+            }
+        }
+
+
+        private string _filePath;
+        public string FilePath
+        {
+            get
+            {
+                return _filePath;
+            }
+            set
+            {
+                _filePath = value;
+                OnPropertyChanged(nameof(FilePath));
+            }
         }
 
         private string _height;
@@ -94,32 +157,102 @@ namespace DXF.ViewModels
 
             Solid body = Cube(size: new Vector3D(sizes[0], height, sizes[1])).Translate(sizes[2], 0, sizes[3]);
             Solid holes = createCylinder(entity, height);
-            var modelGroup = new Model3DGroup();
-            var meshBuilder = new MeshBuilder();
-            Solid asd = Difference(body, holes);
 
+            Solid asd = Difference(body, holes);
             asd = asd.Transform(Matrix4x4.RotationX(90));
 
-            foreach (var polygon in asd.Polygons)
-            {
-                var points = new Point3DCollection();
-                foreach (var vertex in polygon.Vertices)
-                {
-
-                    points.Add(new Point3D(vertex.Pos.X, vertex.Pos.Y, vertex.Pos.Z));
-                }
-                if (points.Count < 5)
-                {
-                    meshBuilder.AddPolygon(points);
-                }
-
-
-                var mesh = meshBuilder.ToMesh();
-                var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
-                var model = new GeometryModel3D(mesh, material);
-                modelGroup.Children.Add(model);
-            }
+            StreamWriter writer = new StreamWriter("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            asd.WriteStl("StlOutput", writer);
+            writer.Close();
+            findSquares(entity);
+            var importer = new ModelImporter();
+            var modelGroup = importer.Load("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            //Model3DGroup modelGroup = new Model3DGroup();
             return modelGroup;
+        }
+        public Model3DGroup GetSolid(double height)
+        {
+
+            Solid body = Cube(size: new Vector3D(1000, height, 800)).Translate(0, 0, 0);
+            Solid holes = createManual(height);
+
+            Solid asd = Difference(body, holes);
+            asd = asd.Transform(Matrix4x4.RotationX(90));
+
+            StreamWriter writer = new StreamWriter("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            asd.WriteStl("StlOutput", writer);
+            writer.Close();
+
+            var importer = new ModelImporter();
+            var modelGroup = importer.Load("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            //Model3DGroup modelGroup = new Model3DGroup();
+            return modelGroup;
+        }
+        public Solid createManual(double height)
+        {
+            Solid solids = new Solid();
+            double length = 100;
+            double width = 100;
+            for(int i = 0; i < 4; i++)
+            {
+                
+                for(int j = 0; j < 4; j++)
+                {
+                    Solid cube = Cube(size: new Vector3D(length, height, width)).Transform(Matrix4x4.RotationY(45)).Translate((i * 200) + 120, 0, (j * 180) + 120);
+                    
+                    solids = Union(solids, cube);
+                    for(int k = 0; k < 4; k++)
+                    {
+                        double centerX = 0, centerY = 0, radius = 10;
+                        if(k == 0)
+                        {
+                            centerX = (i * 200) + 120 + radius;
+                            centerY = (j * 180) + 120;
+                        }
+                        else if(k == 1)
+                        {
+                            centerX = Math.Sqrt(2) * length +  (i * 200) + 120 - radius;
+                            centerY = (j * 180) + 120;
+                        }else if(k == 2)
+                        {
+                            centerX = Math.Sqrt(2) * length / 2 + (i * 200) + 120;
+                            centerY = (j * 180) + 120 - Math.Sqrt(2) * length /2 + radius;
+                        }else if(k == 3)
+                        {
+                            centerX = Math.Sqrt(2) * length / 2 + (i * 200) + 120;
+                            centerY = (j * 180) + 120 + Math.Sqrt(2) * length / 2 - radius;
+                        }
+                        Vector3D start = (true ? new Vector3D(centerX, (0.0 - height * 2) / 2.0, centerY) : new Vector3D(0.0, 0.0, 0.0));
+                        Vector3D end = (true ? new Vector3D(centerX, height * 2 / 2.0, centerY) : new Vector3D(0.0, height, 0.0));
+                        Solid cylinder = Cylinder(new CylinderOptions
+                        {
+                            Start = start,
+                            End = end,
+                            RadiusStart = radius,
+                            RadiusEnd = radius,
+                            Resolution = 100
+
+                        });
+                        solids = Union(solids, cylinder);
+                    }
+                    
+                }
+                //Vector3D start = (true ? new Vector3D(circle.Center.X, (0.0 - height * 2) / 2.0, circle.Center.Y) : new Vector3D(0.0, 0.0, 0.0));
+                //Vector3D end = (true ? new Vector3D(circle.Center.X, height * 2 / 2.0, circle.Center.Y) : new Vector3D(0.0, height, 0.0));
+                //Solid cylinder = Cylinder(new CylinderOptions
+                //{
+                //    Start = start,
+                //    End = end,
+                //    RadiusStart = circle.Radius,
+                //    RadiusEnd = circle.Radius,
+                //    Resolution = 100
+
+                //});
+
+
+            }
+
+            return solids;
         }
 
 
@@ -136,7 +269,7 @@ namespace DXF.ViewModels
                     End = end,
                     RadiusStart = circle.Radius,
                     RadiusEnd = circle.Radius,
-                    Resolution = 10
+                    Resolution = 100
 
                 });
                 cylinders = Union(cylinders, cylinder);
@@ -144,6 +277,58 @@ namespace DXF.ViewModels
             }
 
             return cylinders;
+        }
+
+        public Solid createSquare(DrawingEntities entity, double height)
+        {
+            Solid cylinders = new Solid();
+            foreach (netDxf.Entities.Line line in entity.Lines)
+            {
+
+
+
+            }
+
+            return cylinders;
+        }
+
+        public List<List<Line>> findSquares(DrawingEntities entity)
+        {
+            List<List<Line>> squares = new List<List<Line>>();
+            List<Line> square = new List<Line>();
+            List<Line> lines = new List<Line>();
+            var asd = entity.Lines.GetEnumerator();
+            foreach (netDxf.Entities.Line line in entity.Lines)
+            {
+                var startPoint = new Point(line.StartPoint.X, line.StartPoint.Y);
+                var endPoint = new Point(line.EndPoint.X, line.EndPoint.Y);
+                var length = Math.Sqrt(Math.Pow(line.StartPoint.X - line.EndPoint.X, 2) + Math.Pow(line.StartPoint.Y - line.EndPoint.Y, 2));
+                var angle = Math.Atan((line.StartPoint.X - line.EndPoint.X) / (line.StartPoint.Y - line.EndPoint.Y));
+                lines.Add(new Line(startPoint, endPoint, length, angle));
+            }            
+            while (lines.Count > 0)
+            {
+                if(lines.Count == 1)
+                {
+                    square.Add(lines[0]);
+                    lines.RemoveAt(0);
+                }
+                else
+                {
+                    Line line = lines[0];
+                    square.Add(line);
+                    lines.RemoveAt(0);
+                    for (int i = 0; i < lines.Count; i++)
+                    {
+                        if((line.startPoint.X == lines[i].startPoint.X) && (line.startPoint.Y == lines[i].startPoint.Y))
+                        {
+                            line.connectedLines++;
+
+                        }
+                    }
+                }
+            }
+            return squares;
         }
 
 
@@ -183,272 +368,272 @@ namespace DXF.ViewModels
 
         #region WindowsMedia
 
-        private Model3DGroup readDFX(string filePath, double height)
-        {
-            var modelGroup = new Model3DGroup();
-            var dxf = DxfDocument.Load(filePath);
-            var entity = dxf.Entities;
-            int a = 0;
-            foreach (var element in entity.All)
-            {
-                if (element.GetType() == typeof(netDxf.Entities.Line))
-                    modelGroup.Children.Add(createLine((netDxf.Entities.Line)element, height));
-                else if (element.GetType() == typeof(netDxf.Entities.Circle))
-                    modelGroup.Children.Add(createPipe((netDxf.Entities.Circle)element, height));
-                else if (element.GetType() == typeof(netDxf.Entities.Polyline2D))
-                    modelGroup.Children.Add(createPolyLine((netDxf.Entities.Polyline2D)element, height));
-                else if (element.GetType() == typeof(netDxf.Entities.Solid))
-                    modelGroup.Children.Add(createSolid((netDxf.Entities.Solid)element, height));
-                else if (element.GetType() == typeof(netDxf.Entities.Arc))
-                    modelGroup.Children.Add(createArcWithLines((netDxf.Entities.Arc)element, height, 50));
-            }
+        //private Model3DGroup readDFX(string filePath, double height)
+        //{
+        //    var modelGroup = new Model3DGroup();
+        //    var dxf = DxfDocument.Load(filePath);
+        //    var entity = dxf.Entities;
+        //    int a = 0;
+        //    foreach (var element in entity.All)
+        //    {
+        //        if (element.GetType() == typeof(netDxf.Entities.Line))
+        //            modelGroup.Children.Add(createLine((netDxf.Entities.Line)element, height));
+        //        else if (element.GetType() == typeof(netDxf.Entities.Circle))
+        //            modelGroup.Children.Add(createPipe((netDxf.Entities.Circle)element, height));
+        //        else if (element.GetType() == typeof(netDxf.Entities.Polyline2D))
+        //            modelGroup.Children.Add(createPolyLine((netDxf.Entities.Polyline2D)element, height));
+        //        else if (element.GetType() == typeof(netDxf.Entities.Solid))
+        //            modelGroup.Children.Add(createSolid((netDxf.Entities.Solid)element, height));
+        //        else if (element.GetType() == typeof(netDxf.Entities.Arc))
+        //            modelGroup.Children.Add(createArcWithLines((netDxf.Entities.Arc)element, height, 50));
+        //    }
 
-            a = 2;
-            return modelGroup;
-        }
+        //    a = 2;
+        //    return modelGroup;
+        //}
 
-        public GeometryModel3D createLine(double startPointX, double startPointY, double endPointX, double endPointY, double height, double width)
-        {
-            List<Point> points = new List<Point>
-            {
-                new Point(startPointX, startPointY),
-                new Point(endPointX, endPointY)
-            };
+        //public GeometryModel3D createLine(double startPointX, double startPointY, double endPointX, double endPointY, double height, double width)
+        //{
+        //    List<Point> points = new List<Point>
+        //    {
+        //        new Point(startPointX, startPointY),
+        //        new Point(endPointX, endPointY)
+        //    };
 
-            var meshBuilder = new MeshBuilder();
-            //Center Point of the box
-            Point3D center = new Point3D((startPointX + endPointX) / 2, (startPointY + endPointY) / 2, 0 + height / 2);
-            //double width = 0.01;
-            //Length Calculation
-            double length = Math.Sqrt(Math.Pow((startPointX - endPointX), 2) + Math.Pow((startPointY - endPointY), 2));
+        //    var meshBuilder = new MeshBuilder();
+        //    //Center Point of the box
+        //    Point3D center = new Point3D((startPointX + endPointX) / 2, (startPointY + endPointY) / 2, 0 + height / 2);
+        //    //double width = 0.01;
+        //    //Length Calculation
+        //    double length = Math.Sqrt(Math.Pow((startPointX - endPointX), 2) + Math.Pow((startPointY - endPointY), 2));
 
-            //Angle Calculatiion
-            double angle = Math.Atan((startPointX - endPointX) / (startPointY - endPointY));
-            angle = -angle * 180 / Math.PI;
+        //    //Angle Calculatiion
+        //    double angle = Math.Atan((startPointX - endPointX) / (startPointY - endPointY));
+        //    angle = -angle * 180 / Math.PI;
 
-            //Creating Model
-            meshBuilder.AddBox(center, width, length, height);
-            var mesh = meshBuilder.ToMesh();
-            var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
-            var model = new GeometryModel3D(mesh, material);
+        //    //Creating Model
+        //    meshBuilder.AddBox(center, width, length, height);
+        //    var mesh = meshBuilder.ToMesh();
+        //    var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
+        //    var model = new GeometryModel3D(mesh, material);
 
-            //Rotating model
-            System.Windows.Media.Media3D.Vector3D axis = new System.Windows.Media.Media3D.Vector3D(0, 0, 1); //In case you want to rotate it about the z-axis
-            Matrix3D transformationMatrix = model.Transform.Value; //Gets the matrix indicating the current transformation value
-            transformationMatrix.RotateAt(new Quaternion(axis, angle), center); //Makes a rotation transformation over this matrix
-            model.Transform = new MatrixTransform3D(transformationMatrix); //Applies the transformation to your model
+        //    //Rotating model
+        //    System.Windows.Media.Media3D.Vector3D axis = new System.Windows.Media.Media3D.Vector3D(0, 0, 1); //In case you want to rotate it about the z-axis
+        //    Matrix3D transformationMatrix = model.Transform.Value; //Gets the matrix indicating the current transformation value
+        //    transformationMatrix.RotateAt(new Quaternion(axis, angle), center); //Makes a rotation transformation over this matrix
+        //    model.Transform = new MatrixTransform3D(transformationMatrix); //Applies the transformation to your model
 
-            Line border = new Line(points[0], points[1], length, angle);
-            borders.Add(border);
-            return model;
-        }
+        //    Line border = new Line(points[0], points[1], length, angle);
+        //    borders.Add(border);
+        //    return model;
+        //}
 
-        public GeometryModel3D createLine(netDxf.Entities.Line line, double height)
-        {
-            List<Point> points = new List<Point>
-            {
-                new Point(line.StartPoint.X, line.StartPoint.Y),
-                new Point(line.EndPoint.X, line.EndPoint.Y)
-            };
+        //public GeometryModel3D createLine(netDxf.Entities.Line line, double height)
+        //{
+        //    List<Point> points = new List<Point>
+        //    {
+        //        new Point(line.StartPoint.X, line.StartPoint.Y),
+        //        new Point(line.EndPoint.X, line.EndPoint.Y)
+        //    };
 
-            var meshBuilder = new MeshBuilder();
-            //Center Point of the box
-            Point3D center = new Point3D((line.StartPoint.X + line.EndPoint.X) / 2, (line.StartPoint.Y + line.EndPoint.Y) / 2, 0 + height / 2);
-            double width = 0.01;
-            //Length Calculation
-            double length = Math.Sqrt(Math.Pow((line.StartPoint.X - line.EndPoint.X), 2) + Math.Pow((line.StartPoint.Y - line.EndPoint.Y), 2));
+        //    var meshBuilder = new MeshBuilder();
+        //    //Center Point of the box
+        //    Point3D center = new Point3D((line.StartPoint.X + line.EndPoint.X) / 2, (line.StartPoint.Y + line.EndPoint.Y) / 2, 0 + height / 2);
+        //    double width = 0.01;
+        //    //Length Calculation
+        //    double length = Math.Sqrt(Math.Pow((line.StartPoint.X - line.EndPoint.X), 2) + Math.Pow((line.StartPoint.Y - line.EndPoint.Y), 2));
 
-            //Angle Calculatiion
-            double angle = Math.Atan((line.StartPoint.X - line.EndPoint.X) / (line.StartPoint.Y - line.EndPoint.Y));
-            angle = -angle * 180 / Math.PI;
+        //    //Angle Calculatiion
+        //    double angle = Math.Atan((line.StartPoint.X - line.EndPoint.X) / (line.StartPoint.Y - line.EndPoint.Y));
+        //    angle = -angle * 180 / Math.PI;
 
-            //Creating Model
-            meshBuilder.AddBox(center, width, length, height);
-            var mesh = meshBuilder.ToMesh();
-            var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
-            var model = new GeometryModel3D(mesh, material);
+        //    //Creating Model
+        //    meshBuilder.AddBox(center, width, length, height);
+        //    var mesh = meshBuilder.ToMesh();
+        //    var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
+        //    var model = new GeometryModel3D(mesh, material);
 
-            //Rotating model
-            System.Windows.Media.Media3D.Vector3D axis = new System.Windows.Media.Media3D.Vector3D(0, 0, 1); //In case you want to rotate it about the z-axis
-            Matrix3D transformationMatrix = model.Transform.Value; //Gets the matrix indicating the current transformation value
-            transformationMatrix.RotateAt(new Quaternion(axis, angle), center); //Makes a rotation transformation over this matrix
-            model.Transform = new MatrixTransform3D(transformationMatrix); //Applies the transformation to your model
+        //    //Rotating model
+        //    System.Windows.Media.Media3D.Vector3D axis = new System.Windows.Media.Media3D.Vector3D(0, 0, 1); //In case you want to rotate it about the z-axis
+        //    Matrix3D transformationMatrix = model.Transform.Value; //Gets the matrix indicating the current transformation value
+        //    transformationMatrix.RotateAt(new Quaternion(axis, angle), center); //Makes a rotation transformation over this matrix
+        //    model.Transform = new MatrixTransform3D(transformationMatrix); //Applies the transformation to your model
 
-            Line border = new Line(points[0], points[1], length, angle);
-            borders.Add(border);
+        //    Line border = new Line(points[0], points[1], length, angle);
+        //    borders.Add(border);
             
-            return model;
-        }
+        //    return model;
+        //}
 
-        public GeometryModel3D createPipe(netDxf.Entities.Circle circle, double height)
-        {
-            var meshBuilder = new MeshBuilder();
+        //public GeometryModel3D createPipe(netDxf.Entities.Circle circle, double height)
+        //{
+        //    var meshBuilder = new MeshBuilder();
 
-            double centerX = circle.Center.X;
-            double centerY = circle.Center.Y;
-            double radius = circle.Radius;
+        //    double centerX = circle.Center.X;
+        //    double centerY = circle.Center.Y;
+        //    double radius = circle.Radius;
 
-            meshBuilder.AddPipe(new Point3D(centerX, centerY, 0), new Point3D(centerX, centerY, height), radius, radius + 0.1, 70);
-            var mesh = meshBuilder.ToMesh();
-            var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
-            var model = new GeometryModel3D(mesh, material);
+        //    meshBuilder.AddPipe(new Point3D(centerX, centerY, 0), new Point3D(centerX, centerY, height), radius, radius + 0.1, 70);
+        //    var mesh = meshBuilder.ToMesh();
+        //    var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
+        //    var model = new GeometryModel3D(mesh, material);
 
-            return model;
-        }
-        public Model3DGroup createPolyLine(netDxf.Entities.Polyline2D polyline2D, double height)
-        {
-            Model3DGroup modelGroup = new Model3DGroup();
-            var meshBuilder = new MeshBuilder();
-            for (int i = 0; i < polyline2D.Vertexes.Count - 1; i++)
-            {
-                // Get the start and end points of each segment
-                var start = polyline2D.Vertexes[i].Position;
-                var end = polyline2D.Vertexes[i + 1].Position;
-                modelGroup.Children.Add(createLine(start.X, start.Y, end.X, end.Y, height, 0.01));
-            }
-            return modelGroup;
-        }
+        //    return model;
+        //}
+        //public Model3DGroup createPolyLine(netDxf.Entities.Polyline2D polyline2D, double height)
+        //{
+        //    Model3DGroup modelGroup = new Model3DGroup();
+        //    var meshBuilder = new MeshBuilder();
+        //    for (int i = 0; i < polyline2D.Vertexes.Count - 1; i++)
+        //    {
+        //        // Get the start and end points of each segment
+        //        var start = polyline2D.Vertexes[i].Position;
+        //        var end = polyline2D.Vertexes[i + 1].Position;
+        //        modelGroup.Children.Add(createLine(start.X, start.Y, end.X, end.Y, height, 0.01));
+        //    }
+        //    return modelGroup;
+        //}
 
-        public GeometryModel3D createSolid(netDxf.Entities.Solid solid, double height)
-        {
-            var meshBuilder = new MeshBuilder();
-            var p1 = solid.FirstVertex;
-            var p2 = solid.SecondVertex;
-            var p3 = solid.ThirdVertex;
-            var p4 = solid.FourthVertex;
+        //public GeometryModel3D createSolid(netDxf.Entities.Solid solid, double height)
+        //{
+        //    var meshBuilder = new MeshBuilder();
+        //    var p1 = solid.FirstVertex;
+        //    var p2 = solid.SecondVertex;
+        //    var p3 = solid.ThirdVertex;
+        //    var p4 = solid.FourthVertex;
 
-            //points.Add(new System.Windows.Point(p1.X,p1.Y));
-            //points.Add(new System.Windows.Point(p2.X,p2.Y));
-            //points.Add(new System.Windows.Point(p3.X,p3.Y));
-            var points = new Point3DCollection
-            {
-                new Point3D(p2.X,p2.Y, 0),
-                new Point3D(p4.X,p4.Y, 0),
-                new Point3D(p3.X,p3.Y, 0),
-                new Point3D(p2.X,p2.Y, 0)
-            };
-            meshBuilder.AddPolygon(points);
-            var mesh = meshBuilder.ToMesh();
-            var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
-            var model = new GeometryModel3D(mesh, material);
-            return model;
-        }
+        //    //points.Add(new System.Windows.Point(p1.X,p1.Y));
+        //    //points.Add(new System.Windows.Point(p2.X,p2.Y));
+        //    //points.Add(new System.Windows.Point(p3.X,p3.Y));
+        //    var points = new Point3DCollection
+        //    {
+        //        new Point3D(p2.X,p2.Y, 0),
+        //        new Point3D(p4.X,p4.Y, 0),
+        //        new Point3D(p3.X,p3.Y, 0),
+        //        new Point3D(p2.X,p2.Y, 0)
+        //    };
+        //    meshBuilder.AddPolygon(points);
+        //    var mesh = meshBuilder.ToMesh();
+        //    var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
+        //    var model = new GeometryModel3D(mesh, material);
+        //    return model;
+        //}
 
-        public GeometryModel3D createArc(netDxf.Entities.Arc arc, double height, int segments)
-        {
-            var meshBuilder = new MeshBuilder();
+        //public GeometryModel3D createArc(netDxf.Entities.Arc arc, double height, int segments)
+        //{
+        //    var meshBuilder = new MeshBuilder();
 
-            // Create a collection to hold the arc points
-            var points = new Point3DCollection();
-            double startRad = 0;
-            double endRad = 0;
-            if (arc.StartAngle > arc.EndAngle)
-            {
-                startRad = arc.StartAngle * Math.PI / 180.0;
-                endRad = arc.EndAngle * Math.PI / 180.0;
-            }
-            else if (arc.StartAngle < arc.EndAngle)
-            {
-                startRad = -arc.StartAngle * Math.PI / 180.0;
-                endRad = -arc.EndAngle * Math.PI / 180.0;
-            }
+        //    // Create a collection to hold the arc points
+        //    var points = new Point3DCollection();
+        //    double startRad = 0;
+        //    double endRad = 0;
+        //    if (arc.StartAngle > arc.EndAngle)
+        //    {
+        //        startRad = arc.StartAngle * Math.PI / 180.0;
+        //        endRad = arc.EndAngle * Math.PI / 180.0;
+        //    }
+        //    else if (arc.StartAngle < arc.EndAngle)
+        //    {
+        //        startRad = -arc.StartAngle * Math.PI / 180.0;
+        //        endRad = -arc.EndAngle * Math.PI / 180.0;
+        //    }
 
-            // Calculate the angle step
-            double angleStep = (startRad - endRad) / segments;
-            Point3D pStart = new Point3D(0, 0, 0);
-            Point3D pEnd = new Point3D(0, 0, 0);
+        //    // Calculate the angle step
+        //    double angleStep = (startRad - endRad) / segments;
+        //    Point3D pStart = new Point3D(0, 0, 0);
+        //    Point3D pEnd = new Point3D(0, 0, 0);
 
-            // Generate the points along the arc
-            for (int i = 0; i <= segments; i++)
-            {
-                double angle = arc.StartAngle * Math.PI / 180.0;
-                angle = angle + i * angleStep;
-                double x = arc.Center.X + (arc.Radius * Math.Cos(angle));
-                double y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
-                points.Add(new Point3D(x, y, height - 0.05)); // Z-axis is zero for a 2D arc
-            }
+        //    // Generate the points along the arc
+        //    for (int i = 0; i <= segments; i++)
+        //    {
+        //        double angle = arc.StartAngle * Math.PI / 180.0;
+        //        angle = angle + i * angleStep;
+        //        double x = arc.Center.X + (arc.Radius * Math.Cos(angle));
+        //        double y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
+        //        points.Add(new Point3D(x, y, height - 0.05)); // Z-axis is zero for a 2D arc
+        //    }
 
-            meshBuilder.AddTube(points, 0.1, segments, false);
-            var mesh = meshBuilder.ToMesh();
-            var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
-            var model = new GeometryModel3D(mesh, material);
-            return model;
-        }
+        //    meshBuilder.AddTube(points, 0.1, segments, false);
+        //    var mesh = meshBuilder.ToMesh();
+        //    var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
+        //    var model = new GeometryModel3D(mesh, material);
+        //    return model;
+        //}
 
-        public Model3DGroup createArcWithLines(netDxf.Entities.Arc arc, double height, int segments)
-        {
-            Model3DGroup modelGroup = new Model3DGroup();
-            var meshBuilder = new MeshBuilder();
+        //public Model3DGroup createArcWithLines(netDxf.Entities.Arc arc, double height, int segments)
+        //{
+        //    Model3DGroup modelGroup = new Model3DGroup();
+        //    var meshBuilder = new MeshBuilder();
 
-            // Create a collection to hold the arc points
-            var points = new Point3DCollection();
-            double startRad = 0;
-            double endRad = 0;
-            if (arc.StartAngle > arc.EndAngle)
-            {
-                startRad = arc.StartAngle * Math.PI / 180.0;
-                endRad = arc.EndAngle * Math.PI / 180.0;
-            }
-            else if (arc.StartAngle < arc.EndAngle)
-            {
-                startRad = -arc.StartAngle * Math.PI / 180.0;
-                endRad = -arc.EndAngle * Math.PI / 180.0;
-            }
+        //    // Create a collection to hold the arc points
+        //    var points = new Point3DCollection();
+        //    double startRad = 0;
+        //    double endRad = 0;
+        //    if (arc.StartAngle > arc.EndAngle)
+        //    {
+        //        startRad = arc.StartAngle * Math.PI / 180.0;
+        //        endRad = arc.EndAngle * Math.PI / 180.0;
+        //    }
+        //    else if (arc.StartAngle < arc.EndAngle)
+        //    {
+        //        startRad = -arc.StartAngle * Math.PI / 180.0;
+        //        endRad = -arc.EndAngle * Math.PI / 180.0;
+        //    }
 
-            // Calculate the angle step
-            double angleStep = (startRad - endRad) / segments;
+        //    // Calculate the angle step
+        //    double angleStep = (startRad - endRad) / segments;
 
-            Point3D pStart = new Point3D(0, 0, 0);
-            Point3D pEnd = new Point3D(0, 0, 0);
+        //    Point3D pStart = new Point3D(0, 0, 0);
+        //    Point3D pEnd = new Point3D(0, 0, 0);
 
-            double angle = arc.StartAngle * Math.PI / 180.0;
-            double x = arc.Center.X + (arc.Radius * Math.Cos(angle));
-            double y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
-            pStart = new Point3D(x, y, 0);
+        //    double angle = arc.StartAngle * Math.PI / 180.0;
+        //    double x = arc.Center.X + (arc.Radius * Math.Cos(angle));
+        //    double y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
+        //    pStart = new Point3D(x, y, 0);
 
-            // Generate the points along the arc
-            for (int i = 1; i <= segments; i++)
-            {
-                angle = arc.StartAngle * Math.PI / 180.0;
-                angle = angle + i * angleStep;
-                x = arc.Center.X + (arc.Radius * Math.Cos(angle));
-                y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
-                pEnd = new Point3D(x, y, 0);
-                modelGroup.Children.Add(createLine(pStart.X, pStart.Y, pEnd.X, pEnd.Y, height, 0.01));
-                pStart = pEnd;
-            }
-            var sdas = modelGroup.Children;
-            return modelGroup;
-        }
+        //    // Generate the points along the arc
+        //    for (int i = 1; i <= segments; i++)
+        //    {
+        //        angle = arc.StartAngle * Math.PI / 180.0;
+        //        angle = angle + i * angleStep;
+        //        x = arc.Center.X + (arc.Radius * Math.Cos(angle));
+        //        y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
+        //        pEnd = new Point3D(x, y, 0);
+        //        modelGroup.Children.Add(createLine(pStart.X, pStart.Y, pEnd.X, pEnd.Y, height, 0.01));
+        //        pStart = pEnd;
+        //    }
+        //    var sdas = modelGroup.Children;
+        //    return modelGroup;
+        //}
 
-        public Model3DGroup createPolygon(Model3DGroup modelgroup, List<List<Point>> borders, double height)
-        {
-            var meshBuilder = new MeshBuilder();
-            var group = new Model3DGroup();
-            var polygonPoints = new List<List<Point3D>>();
-            int i = 0;
-            var mesh = new MeshGeometry3D();
-            foreach (var points in polygonPoints)
-            {
-                meshBuilder.AddPolygon(points);
-                mesh = meshBuilder.ToMesh();
-                var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
-                var model = new GeometryModel3D(mesh, material);
-                group.Children.Add(model);
+        //public Model3DGroup createPolygon(Model3DGroup modelgroup, List<List<Point>> borders, double height)
+        //{
+        //    var meshBuilder = new MeshBuilder();
+        //    var group = new Model3DGroup();
+        //    var polygonPoints = new List<List<Point3D>>();
+        //    int i = 0;
+        //    var mesh = new MeshGeometry3D();
+        //    foreach (var points in polygonPoints)
+        //    {
+        //        meshBuilder.AddPolygon(points);
+        //        mesh = meshBuilder.ToMesh();
+        //        var material = new DiffuseMaterial(new SolidColorBrush(Colors.White));
+        //        var model = new GeometryModel3D(mesh, material);
+        //        group.Children.Add(model);
 
-                i++;
-            }
-            return group;
-        }
+        //        i++;
+        //    }
+        //    return group;
+        //}
 
-        public List<List<Line>> getConsequtiveLines(List<Line> lines)
-        {
-            while (lines.Count > 0)
-            {
-                Line line = lines[0];
-            }
-            return null;
-        }
+        //public List<List<Line>> getConsequtiveLines(List<Line> lines)
+        //{
+        //    while (lines.Count > 0)
+        //    {
+        //        Line line = lines[0];
+        //    }
+        //    return null;
+        //}
 
 
 
