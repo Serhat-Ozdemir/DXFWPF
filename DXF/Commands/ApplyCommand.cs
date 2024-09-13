@@ -37,7 +37,7 @@ namespace DXF.Commands
             if (_DXFviewModel.FilePath != null)
             {
 
-                _DXFviewModel.Model = _DXFviewModel.GetSolid(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));
+                _DXFviewModel.Model = _DXFviewModel.getModel(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));
                 //_navigationStore.CurrentViewModel = new DXFViewModel(_navigationStore, Convert.ToDouble(_DXFviewModel.Height), _DXFviewModel.filePath);
             }
             else if (_DXFviewModel.Model != null)

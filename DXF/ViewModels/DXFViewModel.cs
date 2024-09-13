@@ -21,6 +21,10 @@ using netDxf.Collections;
 using SharpDX.Direct3D11;
 using System.Collections;
 using Aspose.ThreeD;
+using System.Linq;
+using netDxf.Entities;
+using Line = DXF.Models.Line;
+using Solid = Csg.Solid;
 
 namespace DXF.ViewModels
 {
@@ -29,6 +33,8 @@ namespace DXF.ViewModels
         public ICommand ApplyCommand { get; }
         public ICommand SelectFileCommand { get; }
         public ICommand CreateManualCommand { get; }
+
+        public List<Line> lines = new List<Line>();
 
         public DXFViewModel(NavigationStore navigation, double height)
         {
@@ -127,163 +133,316 @@ namespace DXF.ViewModels
 
         #region SolidGeometry
 
-        public Model3DGroup GetSolid(string filePath, double height)
+        public Model3DGroup getModel(string filePath, double height)
         {
+            Solid model = getSolid(filePath, height);
+            StreamWriter writer = new StreamWriter("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            model.WriteStl("StlOutput", writer);
+            writer.Close();
+            var importer = new ModelImporter();
+            var modelGroup = importer.Load("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            return modelGroup;
+        }
+        private Solid getSolid(string filePath, double height)
+        {
+            Solid model = new Solid();
+            Solid largest = new Solid();
+
             var dxf = DxfDocument.Load(filePath);
             var entity = dxf.Entities;
             //[0]=>X Length, [1]=>Y Length,[2]=>Smallest X,[3]=>Smallest Y
             double[] sizes = findSizes(entity);
 
-            Solid body = Cube(size: new Vector3D(sizes[0], height, sizes[1])).Translate(sizes[2], 0, sizes[3]);
-            Solid holes = createCylinder(entity, height);
+            Solid body = Cube(size: new Vector3D(2000, 2000, height)).Translate(-30, -30, 0);
+            List<Solid> solids = createSolidsFromLines(findConnectedLines(entity), height);
 
-            Solid asd = Difference(body, holes);
-            asd = asd.Transform(Matrix4x4.RotationX(90));
+            double max = 300;
 
-            StreamWriter writer = new StreamWriter("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
-            asd.WriteStl("StlOutput", writer);
-            writer.Close();
-            findSquares(entity);
-            var importer = new ModelImporter();
-            var modelGroup = importer.Load("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
-            return modelGroup;
+            for (int i = 0; i < solids.Count;i++)
+            {
+                if (solids[i].Polygons[0].BoundingBox.Size.Length > 300)
+                {
+                    
+                    solids.RemoveAt(i);
+                    i--;
+                }                
+            }
+            
+
+            //model = Union(body1, body2);
+            if(solids.Count > 0)
+                for (int i = 0; i < solids.Count; i++)
+                    model = Union(model, solids[i]);
+            model = Union(model, createCylinder(entity, height));
+            model = Difference(body,  model);
+            return model;
         }
+
+        //public Model3DGroup GetSolid(string filePath, double height)
+        //{
+        //    var dxf = DxfDocument.Load(filePath);
+        //    var entity = dxf.Entities;
+        //    //[0]=>X Length, [1]=>Y Length,[2]=>Smallest X,[3]=>Smallest Y
+        //    double[] sizes = findSizes(entity);
+
+        //    Solid body = Cube(size: new Vector3D(sizes[0], sizes[1], height)).Translate(sizes[2], sizes[3], 0);
+        //    List<Solid> solids = createSolids(findConnectedLines(entity), height);
+        //    //Solid body = solids[0];
+        //    Solid holes = createCylinder(entity, height);
+
+        //    Solid asd = new Solid();
+        //    for (int i = 1; i < solids.Count; i++)
+        //        asd = Union(asd, solids[i]);
+        //    asd = Difference(body, asd);
+        //    StreamWriter writer = new StreamWriter("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+        //    asd.WriteStl("StlOutput", writer);
+        //    writer.Close();
+        //    //var xdd = findConnectedLines(entity);
+        //    var importer = new ModelImporter();
+        //    var modelGroup = importer.Load("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+        //    return modelGroup;
+        //}
         public Model3DGroup GetSolid(double height)
         {
 
-            Solid body = Cube(size: new Vector3D(1000, height, 800)).Translate(0, 0, 0);
+            Solid body = Cube(size: new Vector3D(1000, 800, height)).Translate(0, 0, 0);
             //Solid holes = createManual(height);
 
             //Solid asd = Difference(body, holes);
             //asd = asd.Transform(Matrix4x4.RotationX(90));
-            List<Vertex> vertices = new List<Vertex>();
-            List<Csg.Polygon> polygons = new List<Csg.Polygon>();
 
-
-            Vector3D vector = new Vector3D(0, 0, 0);
-            Vector2D tex = new Vector2D(0, 0);
-            Vertex vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(2, 0, 0);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(2, 2, 0);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(0, 2, 0);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            Csg.Polygon pol1 = new Csg.Polygon(vertices);
-            polygons.Add(pol1);
-
-
-            vector = new Vector3D(0, 0, 0);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(2, 0, 0);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(2, 0, -5);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(0, 0, -5);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            Csg.Polygon pol2 = new Csg.Polygon(vertices);
-            polygons.Add(pol2);
-
-            vector = new Vector3D(0, 0, 0);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(0, 2, 0);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(0, 2, -5);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(0, 0, -5);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            Csg.Polygon pol3 = new Csg.Polygon(vertices);
-            polygons.Add(pol3);
-
-
-            vector = new Vector3D(0, 0, -5);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(2, 0, -5);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(2, 2, -5);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-            vector = new Vector3D(0, 2, -5);
-            tex = new Vector2D(0, 0);
-            vertex = new Vertex(vector, tex);
-            vertices.Add(vertex);
-
-            Csg.Polygon pol4 = new Csg.Polygon(vertices);
-            polygons.Add(pol4);
-
-
-
-            Solid dff = Solid.FromPolygons(polygons).Translate(10, 10, 0) ;
-            Solid asd = Union(body, dff);
-            asd = asd.Transform(Matrix4x4.RotationX(90));
+            //Solid dff = Solid.FromPolygons(polygons).Translate(10, 10, 0) ;
+            Solid dff = IrregularShape();
+            dff = dff.Translate(100, 500, 0);
+            Solid asd = Difference(body, dff);
             StreamWriter writer = new StreamWriter("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
-            dff.WriteStl("StlOutput",writer);
+            asd.WriteStl("StlOutput", writer);
             writer.Close();
 
             var importer = new ModelImporter();
             var modelGroup = importer.Load("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
             return modelGroup;
         }
+
+        public List<Solid> createSolidsFromLines(List<List<Line>> squares, double height)
+        {
+            List<Solid> solids = new List<Solid>();
+            foreach (var item in squares)
+            {
+                solids.Add(createSolidWithLines(item, height));
+            }
+            return solids;
+        }
+        public Solid createSolidWithLines(List<Line> square, double height)
+        {
+            int lineCount = square.Count;
+            int pointsCount = lineCount * 2;
+            Vector3D[] points = new Vector3D[pointsCount];
+            int[][] polygons = new int[lineCount + 2][];
+
+            for (int i = 0; i < lineCount - 1; i++)
+            {
+                points[i] = new Vector3D(square[i].startPoint.X, square[i].startPoint.Y, 0);
+                points[i + 1] = new Vector3D(square[i + 1].startPoint.X, square[i + 1].startPoint.Y, 0);
+                points[i + lineCount ] = new Vector3D(square[i].startPoint.X, square[i].startPoint.Y, height);
+                points[i + lineCount + 1] = new Vector3D(square[i + 1].startPoint.X, square[i + 1].startPoint.Y, height);
+            }
+
+            int polygonsLength = polygons.GetLength(0);
+
+            int leftFlag = 0, rightFlag = lineCount + 1;
+            for (int i = 0; i < polygonsLength; i++)
+            {
+                if (i == 0)
+                {
+                    int[] bottomFace = new int[lineCount];
+                    for (int j = 0; j < bottomFace.Length; j++)
+                        bottomFace[j] = j;
+                    polygons[i] = bottomFace;
+                }
+                else if (i == 1)
+                {
+                    int[] bottomFace = new int[lineCount];
+                    for (int j = 0; j < bottomFace.Length; j++)
+                        bottomFace[j] = j + lineCount;
+                    polygons[i] = bottomFace;
+                }
+                else if (i == polygonsLength - 1)
+                    polygons[i] = new int[] { pointsCount - lineCount - 1, 0, pointsCount - lineCount, pointsCount - 1 };
+                else
+                {
+                    polygons[i] = new int[] { leftFlag, leftFlag + 1, rightFlag, rightFlag - 1 };
+                    leftFlag++;
+                    rightFlag++;
+                }
+
+            }
+            Vector3D[] vertices = points;
+            if (vertices == null || vertices.Length == 0 || polygons == null || polygons.Length == 0)
+            {
+                return new Solid();
+            }
+
+            // Create polygons from the vertex data
+            return Solid.FromPolygons(
+                polygons.Select((int[] indices) =>
+                {
+                    // For each polygon, map its indices to the corresponding vertices
+                    var polygonVertices = indices.Select(index => new Vertex(vertices[index], new Vector2D(0, 0))).ToList();
+                    return new Csg.Polygon(polygonVertices);
+                }).ToList()
+            );
+
+        }
+
+        public Solid IrregularShape()
+        {
+            Vector3D[] points = new Vector3D[]
+    {
+        new Vector3D(0, 0, 0),   // Point 0
+        new Vector3D(2, 0, 0),   // Point 1
+        new Vector3D(2, 2, 0),   // Point 2
+        new Vector3D(0, 2, 0),   // Point 3
+
+        new Vector3D(0, 0, 1),   // Point 4 (irregular point)
+        new Vector3D(2, 0, 1),   // Point 5
+        new Vector3D(2, 2, 1),   // Point 6
+        new Vector3D(0, 2, 1),    // Point 7
+
+        new Vector3D(1, 0, 0),   // Point 8
+        new Vector3D(3, 0, 0),   // Point 9
+        new Vector3D(3, -1, 0),   // Point 10
+        new Vector3D(2, -2, 0),   // Point 11
+        new Vector3D(1, -1, 0),   // Point 12 (irregular point)
+
+        new Vector3D(1, 0, 1),   // Point 13
+        new Vector3D(3, 0, 1),   // Point 14
+        new Vector3D(3, -1, 1),   // Point 15
+        new Vector3D(2, -2, 1),   // Point 16
+        new Vector3D(1, -1, 1),   // Point 17 (irregular point)
+
+    };
+            int[][] polygons = new int[][]
+    {
+        new int[] { 0, 1, 2, 3 },   // Bottom face
+        new int[] { 4, 5, 6, 7 },   // Top face
+        new int[] { 0, 1, 5, 4 },   // Side face
+        new int[] { 1, 2, 6, 5 },   // Side face
+        new int[] { 2, 3, 7, 6 },   // Side face
+        new int[] { 3, 0, 4, 7 },   // Side face
+
+
+        new int[] { 8, 9, 10, 11, 12 },   // Bottom face
+        new int[] { 13, 14, 15,16,17 },   // Top face
+        new int[] { 8, 9, 14, 13 },   // Side face
+        new int[] { 9, 10, 15, 14 },   // Side face
+        new int[] { 10, 11, 16, 15 },   // Side face
+        new int[] { 11, 12, 17, 16 },    // Side face
+        new int[] { 12, 8, 13, 17 }    // Side face
+    };
+
+            Vector3D[] vertices = points;  // Array of irregular vertices
+                                           // Each element defines a polygon using vertex indices
+
+            // Make sure there are valid vertices and polygons
+            if (vertices == null || vertices.Length == 0 || polygons == null || polygons.Length == 0)
+            {
+                return new Solid();
+            }
+
+            // Create polygons from the vertex data
+            return Solid.FromPolygons(
+                polygons.Select((int[] indices) =>
+                {
+                    // For each polygon, map its indices to the corresponding vertices
+                    var polygonVertices = indices.Select(index => new Vertex(vertices[index], new Vector2D(0, 0))).ToList();
+                    return new Csg.Polygon(polygonVertices);
+                }).ToList()
+            );
+        }
+        public Solid Prism()
+        {
+            int sides = 6; // Number of sides at the base
+            Vector3D c = new Vector3D(100, 100, 0);
+            Vector3D r = new Vector3D(20, 20, 20);
+            double height = 70;
+
+            if (r.X == 0.0 || r.Y == 0.0 || r.Z == 0.0 || sides < 3)
+            {
+                return new Solid();
+            }
+
+            // Generate vertices for the base and top polygons of the prism
+            List<int[]> prismData = new List<int[]>();
+            List<Vector3D> baseVertices = new List<Vector3D>();
+            List<Vector3D> topVertices = new List<Vector3D>();
+
+            // Calculate the angle between each vertex of the base
+            double angleStep = 2 * Math.PI / sides;
+
+            for (int i = 0; i < sides; i++)
+            {
+                double angle = i * angleStep;
+                double x = c.X + r.X * Math.Cos(angle); // Base vertex X coordinate
+                double y = c.Y + r.Y * Math.Sin(angle); // Base vertex Y coordinate
+                baseVertices.Add(new Vector3D(x, y, c.Z - height / 2)); // Bottom base vertex
+                topVertices.Add(new Vector3D(x, y, c.Z + height / 2)); // Top base vertex
+            }
+
+            // Add base and top polygons to the data
+            prismData.Add(baseVertices.Select((v, i) => i).ToArray());  // Bottom face
+            prismData.Add(topVertices.Select((v, i) => i + sides).ToArray());  // Top face
+
+            // Add side faces (each rectangle formed between consecutive vertices on base and top)
+            for (int i = 0; i < sides; i++)
+            {
+                int next = (i + 1) % sides; // Wrap around to the first vertex
+                prismData.Add(new int[] { i, next, next + sides, i + sides });
+            }
+
+            // Create polygons based on the vertices
+            return Solid.FromPolygons(
+                prismData.Select((int[] info) =>
+                {
+                    var vertices = info.Select(i => new Vertex(i < sides ? baseVertices[i] : topVertices[i - sides], new Vector2D(0, 0))).ToList();
+                    return new Csg.Polygon(vertices);
+                }).ToList()
+            );
+        }
         public Solid createManual(double height)
         {
             Solid solids = new Solid();
-            
-            
+
+
             double length = 100;
             double width = 100;
-            for(int i = 0; i < 4; i++)
+            for (int i = 0; i < 4; i++)
             {
-                
-                for(int j = 0; j < 4; j++)
+
+                for (int j = 0; j < 4; j++)
                 {
                     Solid cube = Cube(size: new Vector3D(length, height, width)).Transform(Matrix4x4.RotationY(45)).Translate((i * 200) + 120, 0, (j * 180) + 120);
-                    
+
                     solids = Union(solids, cube);
-                    for(int k = 0; k < 4; k++)
+                    for (int k = 0; k < 4; k++)
                     {
                         double centerX = 0, centerY = 0, radius = 10;
-                        if(k == 0)
+                        if (k == 0)
                         {
                             centerX = (i * 200) + 120 + radius;
                             centerY = (j * 180) + 120;
                         }
-                        else if(k == 1)
+                        else if (k == 1)
                         {
-                            centerX = Math.Sqrt(2) * length +  (i * 200) + 120 - radius;
+                            centerX = Math.Sqrt(2) * length + (i * 200) + 120 - radius;
                             centerY = (j * 180) + 120;
-                        }else if(k == 2)
+                        }
+                        else if (k == 2)
                         {
                             centerX = Math.Sqrt(2) * length / 2 + (i * 200) + 120;
-                            centerY = (j * 180) + 120 - Math.Sqrt(2) * length /2 + radius;
-                        }else if(k == 3)
+                            centerY = (j * 180) + 120 - Math.Sqrt(2) * length / 2 + radius;
+                        }
+                        else if (k == 3)
                         {
                             centerX = Math.Sqrt(2) * length / 2 + (i * 200) + 120;
                             centerY = (j * 180) + 120 + Math.Sqrt(2) * length / 2 - radius;
@@ -301,21 +460,20 @@ namespace DXF.ViewModels
                         });
                         solids = Union(solids, cylinder);
                     }
-                    
+
                 }
             }
 
             return solids;
         }
 
-
         public Solid createCylinder(DrawingEntities entity, double height)
         {
             Solid cylinders = new Solid();
             foreach (netDxf.Entities.Circle circle in entity.Circles)
             {
-                Vector3D start = (true ? new Vector3D(circle.Center.X, (0.0 - height * 2) / 2.0, circle.Center.Y) : new Vector3D(0.0, 0.0, 0.0));
-                Vector3D end = (true ? new Vector3D(circle.Center.X, height * 2 / 2.0, circle.Center.Y) : new Vector3D(0.0, height, 0.0));
+                Vector3D start = (true ? new Vector3D(circle.Center.X, circle.Center.Y, (0.0 - height * 2) / 2.0) : new Vector3D(0.0, 0.0, 0.0));
+                Vector3D end = (true ? new Vector3D(circle.Center.X,  circle.Center.Y, height * 2 / 2.0) : new Vector3D(0.0, height, 0.0));
                 Solid cylinder = Cylinder(new CylinderOptions
                 {
                     Start = start,
@@ -332,36 +490,38 @@ namespace DXF.ViewModels
             return cylinders;
         }
 
-        public Solid createSquare(DrawingEntities entity, double height)
-        {
-            Solid cylinders = new Solid();
-            foreach (netDxf.Entities.Line line in entity.Lines)
-            {
 
-
-
-            }
-
-            return cylinders;
-        }
-
-        public List<List<Line>> findSquares(DrawingEntities entity)
+        public List<List<Line>> findConnectedLines(DrawingEntities entity)
         {
             List<List<Line>> squares = new List<List<Line>>();
-            List<Line> square = new List<Line>();
-            List<Line> lines = new List<Line>();
+            
             var asd = entity.Lines.GetEnumerator();
             foreach (netDxf.Entities.Line line in entity.Lines)
             {
-                var startPoint = new Point(line.StartPoint.X, line.StartPoint.Y);
-                var endPoint = new Point(line.EndPoint.X, line.EndPoint.Y);
+                var startPoint = new System.Windows.Point(line.StartPoint.X, line.StartPoint.Y);
+                var endPoint = new System.Windows.Point(line.EndPoint.X, line.EndPoint.Y);
                 var length = Math.Sqrt(Math.Pow(line.StartPoint.X - line.EndPoint.X, 2) + Math.Pow(line.StartPoint.Y - line.EndPoint.Y, 2));
                 var angle = Math.Atan((line.StartPoint.X - line.EndPoint.X) / (line.StartPoint.Y - line.EndPoint.Y));
                 lines.Add(new Line(startPoint, endPoint, length, angle));
-            }            
+            }
+
+            foreach (var polyline2D in entity.Polylines2D)
+            {
+                for (int i = 0; i < polyline2D.Vertexes.Count -1; i++)
+                {
+                    // Get the start and end points of each segment
+                    var startPoint = new System.Windows.Point(polyline2D.Vertexes[i].Position.X, polyline2D.Vertexes[i].Position.Y);
+                    var endPoint = new System.Windows.Point(polyline2D.Vertexes[i + 1].Position.X, polyline2D.Vertexes[i + 1].Position.Y);
+                    var length = Math.Sqrt(Math.Pow(startPoint.X - endPoint.X, 2) + Math.Pow(startPoint.Y - endPoint.Y, 2));
+                    var angle = Math.Atan((startPoint.X - endPoint.X) / (startPoint.Y - endPoint.Y));
+                    lines.Add(new Line(startPoint, endPoint, length, angle));
+                }                
+                
+            }
             while (lines.Count > 0)
             {
-                if(lines.Count == 1)
+                List<Line> square = new List<Line>();
+                if (lines.Count == 1)
                 {
                     square.Add(lines[0]);
                     lines.RemoveAt(0);
@@ -373,12 +533,56 @@ namespace DXF.ViewModels
                     lines.RemoveAt(0);
                     for (int i = 0; i < lines.Count; i++)
                     {
-                        if((line.startPoint.X == lines[i].startPoint.X) && (line.startPoint.Y == lines[i].startPoint.Y))
+                        if ((line.endPoint.X == lines[i].startPoint.X) && (line.endPoint.Y == lines[i].startPoint.Y))
                         {
-                            line.connectedLines++;
-
+                            line = lines[i];
+                            square.Add(line);
+                            lines.RemoveAt(i);
+                            i = -1;
                         }
+                        else if ( Math.Abs((line.endPoint.X - lines[i].startPoint.X)) < 5 && Math.Abs((line.endPoint.Y - lines[i].startPoint.Y)) < 5)
+                        {
+                            line = lines[i];
+                            square.Add(line);
+                            lines.RemoveAt(i);
+                            i = -1;
+                        }
+                        //else if ((line.endPoint.X == lines[i].startPoint.X) && (line.endPoint.Y - lines[i].startPoint.Y < 3))
+                        //{
+                        //    line = lines[i];
+                        //    square.Add(line);
+                        //    lines.RemoveAt(i);
+                        //    i = -1;
+                        //}else if ((line.endPoint.X - lines[i].startPoint.X < 3) && (line.endPoint.Y == lines[i].startPoint.Y))
+                        //{
+                        //    line = lines[i];
+                        //    square.Add(line);
+                        //    lines.RemoveAt(i);
+                        //    i = -1;
+                        //}
+                        //else if ((line.startPoint.X == lines[i].endPoint.X) && (line.startPoint.Y == lines[i].endPoint.Y))
+                        //{
+                        //    line = lines[i];
+                        //    square.Add(line);
+                        //    lines.RemoveAt(i);
+                        //    i = 0;
+                        //}
+                        //else if ((line.endPoint.X == lines[i].endPoint.X) && (line.endPoint.Y == lines[i].endPoint.Y))
+                        //{
+                        //    line = lines[i];
+                        //    square.Add(line);
+                        //    lines.RemoveAt(i);
+                        //    i = 0;
+                        //}
+                        //else if ((line.endPoint.X == lines[i].startPoint.X) && (line.endPoint.Y == lines[i].startPoint.Y))
+                        //{
+                        //    line = lines[i];
+                        //    square.Add(line);
+                        //    lines.RemoveAt(i);
+                        //    i = 0;
+                        //}
                     }
+                    squares.Add(square);
                 }
             }
             return squares;
@@ -447,11 +651,7 @@ namespace DXF.ViewModels
 
         public GeometryModel3D createLine(double startPointX, double startPointY, double endPointX, double endPointY, double height, double width)
         {
-            List<Point> points = new List<Point>
-            {
-                new Point(startPointX, startPointY),
-                new Point(endPointX, endPointY)
-            };
+
 
             var meshBuilder = new MeshBuilder();
 
@@ -482,11 +682,7 @@ namespace DXF.ViewModels
 
         public GeometryModel3D createLine(netDxf.Entities.Line line, double height)
         {
-            List<Point> points = new List<Point>
-            {
-                new Point(line.StartPoint.X, line.StartPoint.Y),
-                new Point(line.EndPoint.X, line.EndPoint.Y)
-            };
+
 
             var meshBuilder = new MeshBuilder();
 
@@ -654,7 +850,7 @@ namespace DXF.ViewModels
             return modelGroup;
         }
 
-        public Model3DGroup createPolygon(Model3DGroup modelgroup, List<List<Point>> borders, double height)
+        public Model3DGroup createPolygon(Model3DGroup modelgroup, double height)
         {
             var meshBuilder = new MeshBuilder();
             var group = new Model3DGroup();

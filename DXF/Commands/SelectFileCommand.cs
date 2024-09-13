@@ -40,7 +40,7 @@ namespace DXF.Commands
                     return;
                 }
                 _DXFviewModel.FilePath = fileDialog.FileName;
-                _DXFviewModel.Model = _DXFviewModel.GetSolid(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));
+                _DXFviewModel.Model = _DXFviewModel.getModel(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));
 
                 if (_DXFviewModel.Model == null) return;
 
