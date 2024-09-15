@@ -38,6 +38,7 @@ namespace DXF.ViewModels
 
         public DXFViewModel(NavigationStore navigation, double height)
         {
+            //Model = readDFX("C:\\Users\\Lenovo\\Downloads\\DXFWPF-master (2)\\DXFWPF-master\\DXF\\SamplesV2\\STANDART FUAR SEPERATOR.dxf",5);
             Height = Convert.ToString(height);
             ApplyCommand = new ApplyCommand(this, navigation);
             SelectFileCommand = new SelectFileCommand(this, navigation);
@@ -136,11 +137,11 @@ namespace DXF.ViewModels
         public Model3DGroup getModel(string filePath, double height)
         {
             Solid model = getSolid(filePath, height);
-            StreamWriter writer = new StreamWriter("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            StreamWriter writer = new StreamWriter("C:\\Users\\Lenovo\\Downloads\\DXFWPF-master (2)\\DXFWPF-master\\DXF\\3DModels\\StlOutput.stl");
             model.WriteStl("StlOutput", writer);
             writer.Close();
             var importer = new ModelImporter();
-            var modelGroup = importer.Load("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            var modelGroup = importer.Load("C:\\Users\\Lenovo\\Downloads\\DXFWPF-master (2)\\DXFWPF-master\\DXF\\3DModels\\StlOutput.stl");
             return modelGroup;
         }
         private Solid getSolid(string filePath, double height)
@@ -153,28 +154,30 @@ namespace DXF.ViewModels
             //[0]=>X Length, [1]=>Y Length,[2]=>Smallest X,[3]=>Smallest Y
             double[] sizes = findSizes(entity);
 
-            Solid body = Cube(size: new Vector3D(2000, 2000, height)).Translate(-30, -30, 0);
-            List<Solid> solids = createSolidsFromLines(findConnectedLines(entity), height);
-
+            //Solid body = Cube(size: new Vector3D(2000, 2000, height)).Translate(-30, -30, 0);
+            List<Solid> solids = getSolidsList(findConnectedLines(entity), height);
+            Solid body = new Solid();
             double max = 300;
 
-            for (int i = 0; i < solids.Count;i++)
+            for (int i = 0; i < solids.Count; i++)
             {
                 if (solids[i].Polygons[0].BoundingBox.Size.Length > 300)
                 {
-                    
+                    body = solids[i];
                     solids.RemoveAt(i);
                     i--;
-                }                
+                }
             }
-            
+
 
             //model = Union(body1, body2);
-            if(solids.Count > 0)
+            if (solids.Count > 0)
                 for (int i = 0; i < solids.Count; i++)
                     model = Union(model, solids[i]);
             model = Union(model, createCylinder(entity, height));
-            model = Difference(body,  model);
+            model = Difference(body, model);
+            //model = Difference(body,  model);
+            //model = body;
             return model;
         }
 
@@ -215,16 +218,17 @@ namespace DXF.ViewModels
             Solid dff = IrregularShape();
             dff = dff.Translate(100, 500, 0);
             Solid asd = Difference(body, dff);
-            StreamWriter writer = new StreamWriter("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            StreamWriter writer = new StreamWriter("C:\\Users\\Lenovo\\Downloads\\DXFWPF-master (2)\\DXFWPF-master\\DXF\\3DModels\\StlOutput.stl");
             asd.WriteStl("StlOutput", writer);
             writer.Close();
 
             var importer = new ModelImporter();
-            var modelGroup = importer.Load("C:\\Users\\serhat.ozdemir\\source\\repos\\DXF\\DXF\\3DModels\\StlOutput.stl");
+            var modelGroup = importer.Load("C:\\Users\\Lenovo\\Downloads\\DXFWPF-master (2)\\DXFWPF-master\\DXF\\3DModels\\StlOutput.stl");
             return modelGroup;
         }
 
-        public List<Solid> createSolidsFromLines(List<List<Line>> squares, double height)
+
+        public List<Solid> getSolidsList(List<List<Line>> squares, double height)
         {
             List<Solid> solids = new List<Solid>();
             foreach (var item in squares)
@@ -244,7 +248,7 @@ namespace DXF.ViewModels
             {
                 points[i] = new Vector3D(square[i].startPoint.X, square[i].startPoint.Y, 0);
                 points[i + 1] = new Vector3D(square[i + 1].startPoint.X, square[i + 1].startPoint.Y, 0);
-                points[i + lineCount ] = new Vector3D(square[i].startPoint.X, square[i].startPoint.Y, height);
+                points[i + lineCount] = new Vector3D(square[i].startPoint.X, square[i].startPoint.Y, height);
                 points[i + lineCount + 1] = new Vector3D(square[i + 1].startPoint.X, square[i + 1].startPoint.Y, height);
             }
 
@@ -472,8 +476,8 @@ namespace DXF.ViewModels
             Solid cylinders = new Solid();
             foreach (netDxf.Entities.Circle circle in entity.Circles)
             {
-                Vector3D start = (true ? new Vector3D(circle.Center.X, circle.Center.Y, (0.0 - height * 2) / 2.0) : new Vector3D(0.0, 0.0, 0.0));
-                Vector3D end = (true ? new Vector3D(circle.Center.X,  circle.Center.Y, height * 2 / 2.0) : new Vector3D(0.0, height, 0.0));
+                Vector3D start = (true ? new Vector3D(circle.Center.X, circle.Center.Y, 0.0) : new Vector3D(0.0, 0.0, 0.0));
+                Vector3D end = (true ? new Vector3D(circle.Center.X, circle.Center.Y, height * 2 / 2.0) : new Vector3D(0.0, height, 0.0));
                 Solid cylinder = Cylinder(new CylinderOptions
                 {
                     Start = start,
@@ -494,7 +498,7 @@ namespace DXF.ViewModels
         public List<List<Line>> findConnectedLines(DrawingEntities entity)
         {
             List<List<Line>> squares = new List<List<Line>>();
-            
+
             var asd = entity.Lines.GetEnumerator();
             foreach (netDxf.Entities.Line line in entity.Lines)
             {
@@ -507,7 +511,7 @@ namespace DXF.ViewModels
 
             foreach (var polyline2D in entity.Polylines2D)
             {
-                for (int i = 0; i < polyline2D.Vertexes.Count -1; i++)
+                for (int i = 0; i < polyline2D.Vertexes.Count - 1; i++)
                 {
                     // Get the start and end points of each segment
                     var startPoint = new System.Windows.Point(polyline2D.Vertexes[i].Position.X, polyline2D.Vertexes[i].Position.Y);
@@ -515,8 +519,51 @@ namespace DXF.ViewModels
                     var length = Math.Sqrt(Math.Pow(startPoint.X - endPoint.X, 2) + Math.Pow(startPoint.Y - endPoint.Y, 2));
                     var angle = Math.Atan((startPoint.X - endPoint.X) / (startPoint.Y - endPoint.Y));
                     lines.Add(new Line(startPoint, endPoint, length, angle));
-                }                
-                
+                }
+
+            }
+
+            foreach (var arc in entity.Arcs)
+            {
+                var points = new Point3DCollection();
+                double startRad = 0;
+                double endRad = 0;
+                double segments = 70;
+                if (arc.StartAngle > arc.EndAngle)
+                {
+                    startRad = arc.StartAngle * Math.PI / 180.0;
+                    endRad = arc.EndAngle * Math.PI / 180.0;
+                }
+                else if (arc.StartAngle < arc.EndAngle)
+                {
+                    startRad = -arc.StartAngle * Math.PI / 180.0;
+                    endRad = -arc.EndAngle * Math.PI / 180.0;
+                }
+
+                // Calculate the angle step
+                double angleStep = (startRad - endRad) / segments;
+
+                System.Windows.Point pStart = new System.Windows.Point(0, 0);
+                System.Windows.Point pEnd = new System.Windows.Point(0, 0);
+
+                double angle = arc.StartAngle * Math.PI / 180.0;
+                double x = arc.Center.X + (arc.Radius * Math.Cos(angle));
+                double y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
+                pStart = new System.Windows.Point(x, y);
+
+                // Generate the points along the arc
+                for (int i = 1; i <= segments; i++)
+                {
+                    angle = arc.StartAngle * Math.PI / 180.0;
+                    angle = angle + i * angleStep;
+                    x = arc.Center.X + (arc.Radius * Math.Cos(angle));
+                    y = arc.Center.Y + (arc.Radius * Math.Sin(angle));
+                    pEnd = new System.Windows.Point(x, y);
+                    var length = Math.Sqrt(Math.Pow(pStart.X - pEnd.X, 2) + Math.Pow(pStart.Y - pEnd.Y, 2));
+                    var lineAngle = Math.Atan((pStart.X - pEnd.X) / (pStart.Y - pEnd.Y));
+                    lines.Add(new Line(pStart, pEnd, length, lineAngle));
+                    pStart = pEnd;
+                }
             }
             while (lines.Count > 0)
             {
@@ -533,14 +580,7 @@ namespace DXF.ViewModels
                     lines.RemoveAt(0);
                     for (int i = 0; i < lines.Count; i++)
                     {
-                        if ((line.endPoint.X == lines[i].startPoint.X) && (line.endPoint.Y == lines[i].startPoint.Y))
-                        {
-                            line = lines[i];
-                            square.Add(line);
-                            lines.RemoveAt(i);
-                            i = -1;
-                        }
-                        else if ( Math.Abs((line.endPoint.X - lines[i].startPoint.X)) < 5 && Math.Abs((line.endPoint.Y - lines[i].startPoint.Y)) < 5)
+                        if (Math.Abs((line.endPoint.X - lines[i].startPoint.X)) < 0.5 && Math.Abs((line.endPoint.Y - lines[i].startPoint.Y)) < 0.5)
                         {
                             line = lines[i];
                             square.Add(line);
