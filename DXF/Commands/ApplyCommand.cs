@@ -13,11 +13,9 @@ namespace DXF.Commands
     public  class ApplyCommand : CommandBase
     {
         DXFViewModel _DXFviewModel;
-        NavigationStore _navigationStore;
-        public ApplyCommand(DXFViewModel DXFviewModel, NavigationStore navigationStore) 
+        public ApplyCommand(DXFViewModel DXFviewModel) 
         { 
             _DXFviewModel = DXFviewModel;
-            _navigationStore = navigationStore;
 
         }
 
@@ -37,12 +35,7 @@ namespace DXF.Commands
             if (_DXFviewModel.FilePath != null)
             {
 
-                _DXFviewModel.Model = _DXFviewModel.getModel(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));
-                //_navigationStore.CurrentViewModel = new DXFViewModel(_navigationStore, Convert.ToDouble(_DXFviewModel.Height), _DXFviewModel.filePath);
-            }
-            else if (_DXFviewModel.Model != null)
-            {
-                _DXFviewModel.Model = _DXFviewModel.GetSolid(Convert.ToDouble(_DXFviewModel.Height));
+                _DXFviewModel.Model = _DXFviewModel.showModel(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));                
             }
             else
                 giveError();

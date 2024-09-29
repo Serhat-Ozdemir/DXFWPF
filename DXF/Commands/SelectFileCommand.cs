@@ -14,7 +14,7 @@ namespace DXF.Commands
     class SelectFileCommand : CommandBase
     {
         DXFViewModel _DXFviewModel;
-        public SelectFileCommand(DXFViewModel DXFviewModel, NavigationStore navigationStore)
+        public SelectFileCommand(DXFViewModel DXFviewModel)
         {
             _DXFviewModel = DXFviewModel;
 
@@ -40,7 +40,8 @@ namespace DXF.Commands
                     return;
                 }
                 _DXFviewModel.FilePath = fileDialog.FileName;
-                _DXFviewModel.Model = _DXFviewModel.getModel(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));
+                _DXFviewModel.Model = _DXFviewModel.showModel(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));
+                //_DXFviewModel.Model = _DXFviewModel.readDFX(_DXFviewModel.FilePath, Convert.ToDouble(_DXFviewModel.Height));
 
                 if (_DXFviewModel.Model == null) return;
 
@@ -53,7 +54,7 @@ namespace DXF.Commands
                 double distance = Math.Max(bounds.SizeX, Math.Max(bounds.SizeY, bounds.SizeZ)) * 5;
 
                 _DXFviewModel.CameraPosition = new Point3D(center.X, center.Y, center.Z + distance);
-                _DXFviewModel.CameraLookDirection = new System.Windows.Media.Media3D.Vector3D(center.X - _DXFviewModel.CameraPosition.X, center.Y - _DXFviewModel.CameraPosition.Y, center.Z - _DXFviewModel.CameraPosition.Z);
+                _DXFviewModel.CameraLookDirection = new Vector3D(center.X - _DXFviewModel.CameraPosition.X, center.Y - _DXFviewModel.CameraPosition.Y, center.Z - _DXFviewModel.CameraPosition.Z);
 
             }
             else

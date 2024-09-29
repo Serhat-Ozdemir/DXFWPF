@@ -240,7 +240,6 @@
     </ApplicationDefinition>
     <Compile Include="Commands\ApplyCommand.cs" />
     <Compile Include="Commands\CommandBase.cs" />
-    <Compile Include="Commands\CreateManualCommand.cs" />
     <Compile Include="Commands\SelectFileCommand.cs" />
     <Compile Include="Models\Line.cs" />
     <Compile Include="Stores\NavigationStore.cs" />

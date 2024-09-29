@@ -26,7 +26,6 @@
             </helix:HelixViewport3D>
 
             <Button Grid.Row="0" Command="{Binding SelectFileCommand}" Content="Select File" Width="100" Height="30" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-            <Button Grid.Row="0" Command="{Binding CreateManualCommand}" Content="Create" Width="70" Height="30" HorizontalAlignment="Right" VerticalAlignment="Top"/>
         </Grid>
 
         <Grid Grid.Row="1">
